@@ -73,12 +73,16 @@ api.interceptors.response.use(
 // Servicios de autenticación
 export const authService = {
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
+    console.log('API Service: Enviando petición de login a /api/auth/login/', credentials);
     const response: AxiosResponse<AuthResponse> = await api.post('/api/auth/login/', credentials);
+    console.log('API Service: Respuesta del login:', response.data);
     return response.data;
   },
 
   register: async (userData: RegisterData): Promise<AuthResponse> => {
+    console.log('API Service: Enviando petición de registro a /api/auth/register/', userData);
     const response: AxiosResponse<AuthResponse> = await api.post('/api/auth/register/', userData);
+    console.log('API Service: Respuesta del registro:', response.data);
     return response.data;
   },
 

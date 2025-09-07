@@ -32,6 +32,11 @@ const RegisterForm: React.FC = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
 
+  // Limpiar errores al montar el componente
+  React.useEffect(() => {
+    clearError();
+  }, [clearError]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -51,12 +56,16 @@ const RegisterForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('RegisterForm: Iniciando registro con datos:', formData);
     setIsLoading(true);
 
     try {
+      console.log('RegisterForm: Llamando a register()...');
       await register(formData);
+      console.log('RegisterForm: Registro exitoso, navegando al dashboard');
       navigate('/dashboard');
     } catch (error) {
+      console.error('RegisterForm: Error en registro:', error);
       // El error se maneja en el contexto
     } finally {
       setIsLoading(false);

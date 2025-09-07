@@ -119,8 +119,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Función de login
   const login = async (credentials: LoginCredentials): Promise<void> => {
     try {
+      console.log('AuthContext: Ejecutando función login con credenciales:', credentials);
       dispatch({ type: 'AUTH_START' });
       const response = await authService.login(credentials);
+      console.log('AuthContext: Respuesta del login:', response);
       
       // Guardar tokens
       localStorage.setItem('access_token', response.access);
@@ -128,6 +130,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       dispatch({ type: 'AUTH_SUCCESS', payload: response.user });
     } catch (error: any) {
+      console.error('AuthContext: Error en login:', error);
       const errorMessage = error.response?.data?.detail || 'Error al iniciar sesión';
       dispatch({ type: 'AUTH_FAILURE', payload: errorMessage });
       throw error;
@@ -137,8 +140,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Función de registro
   const register = async (userData: RegisterData): Promise<void> => {
     try {
+      console.log('AuthContext: Ejecutando función register con datos:', userData);
       dispatch({ type: 'AUTH_START' });
       const response = await authService.register(userData);
+      console.log('AuthContext: Respuesta del registro:', response);
       
       // Guardar tokens
       localStorage.setItem('access_token', response.access);
@@ -146,6 +151,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       dispatch({ type: 'AUTH_SUCCESS', payload: response.user });
     } catch (error: any) {
+      console.error('AuthContext: Error en registro:', error);
       const errorMessage = error.response?.data?.detail || 'Error al registrarse';
       dispatch({ type: 'AUTH_FAILURE', payload: errorMessage });
       throw error;
