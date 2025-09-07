@@ -34,6 +34,7 @@ const RegisterForm: React.FC = () => {
 
   // Limpiar errores al montar el componente
   React.useEffect(() => {
+    console.log('RegisterForm: Componente montado');
     clearError();
   }, [clearError]);
 

@@ -97,18 +97,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Verificar autenticación al cargar la aplicación
   useEffect(() => {
     const checkAuth = async () => {
+      console.log('AuthContext: Verificando autenticación...');
       const token = localStorage.getItem('access_token');
       if (token) {
+        console.log('AuthContext: Token encontrado, verificando usuario...');
         try {
           dispatch({ type: 'AUTH_START' });
           const user = await authService.getCurrentUser();
+          console.log('AuthContext: Usuario autenticado:', user);
           dispatch({ type: 'AUTH_SUCCESS', payload: user });
         } catch (error) {
+          console.log('AuthContext: Error al verificar usuario, limpiando tokens');
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
           dispatch({ type: 'AUTH_FAILURE', payload: 'Sesión expirada' });
         }
       } else {
+        console.log('AuthContext: No hay token, usuario no autenticado');
         dispatch({ type: 'AUTH_FAILURE', payload: '' });
       }
     };

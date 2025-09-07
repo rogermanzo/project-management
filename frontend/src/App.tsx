@@ -98,10 +98,10 @@ function App() {
             />
             
             {/* Redirección por defecto */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<Navigate to="/login" replace />} />
             
             {/* Ruta 404 */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </Router>
         </NotificationProvider>

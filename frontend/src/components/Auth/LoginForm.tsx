@@ -33,6 +33,7 @@ const LoginForm: React.FC = () => {
 
   // Limpiar errores al montar el componente
   React.useEffect(() => {
+    console.log('LoginForm: Componente montado');
     clearError();
   }, [clearError]);
 
