@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: gestion-proyecto-backend
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn project_management.wsgi:application
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: project_management.settings_production
+      - key: SECRET_KEY
+        value: tu-secret-key-super-seguro
+      - key: DEBUG
+        value: False
+      - key: ALLOWED_HOSTS
+        value: gestion-proyecto-backend.onrender.com
+    healthCheckPath: /admin/
