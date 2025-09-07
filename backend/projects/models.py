@@ -319,6 +319,10 @@ class TaskComment(models.Model):
     def can_user_edit(self, user):
         """Verifica si un usuario puede editar este comentario"""
         return user == self.author
+    
+    def can_user_delete(self, user):
+        """Verifica si un usuario puede eliminar este comentario"""
+        return user == self.author
 
 
 class Notification(models.Model):

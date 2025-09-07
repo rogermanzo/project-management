@@ -203,19 +203,6 @@ class TaskCommentCreateSerializer(serializers.ModelSerializer):
         if request and request.user:
             validated_data['author'] = request.user
         return super().create(validated_data)
-    
-    def validate_due_date(self, value):
-        """Valida que la fecha límite sea futura"""
-        if value and value <= timezone.now():
-            raise serializers.ValidationError(
-                "La fecha límite debe ser futura."
-            )
-        return value
-    
-    def create(self, validated_data):
-        """Crea una nueva tarea"""
-        validated_data['created_by'] = self.context['request'].user
-        return super().create(validated_data)
 
 
 class TaskDetailSerializer(TaskSerializer):

@@ -58,6 +58,18 @@ export interface Task {
   updated_at: string;
 }
 
+export interface TaskComment {
+  id: number;
+  content: string;
+  author: number;
+  author_name: string;
+  author_username: string;
+  created_at: string;
+  updated_at: string;
+  can_edit: boolean;
+  can_delete: boolean;
+}
+
 export interface ProjectMember {
   id: number;
   user: number;

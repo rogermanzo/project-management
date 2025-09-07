@@ -28,10 +28,13 @@ import {
   Edit,
   Delete,
   Assignment,
+  Comment,
+  Send,
+  MoreVert,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { taskService, userService, projectService } from '../services/api';
-import { Task, User, Project } from '../types';
+import { Task, User, Project, TaskComment } from '../types';
 import { PageHeader, Loading, ErrorAlert } from '../components/Common';
 
 interface TabPanelProps {
@@ -68,6 +71,10 @@ const Tasks: React.FC = () => {
   const [openViewDialog, setOpenViewDialog] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
+  const [taskComments, setTaskComments] = useState<TaskComment[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [editingComment, setEditingComment] = useState<TaskComment | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -119,14 +126,14 @@ const Tasks: React.FC = () => {
 
   // Filtrar tareas según la pestaña activa
   const getFilteredTasks = () => {
-    switch (tabValue) {
-      case 0: // Todas
+      switch (tabValue) {
+        case 0: // Todas
         return tasks;
-      case 1: // Pendientes
+        case 1: // Pendientes
         return tasks.filter(task => task.status === 'pending');
       case 2: // En Progreso
         return tasks.filter(task => task.status === 'in_progress');
-      case 3: // Completadas
+        case 3: // Completadas
         return tasks.filter(task => task.status === 'completed');
       default:
         return tasks;
@@ -188,14 +195,26 @@ const Tasks: React.FC = () => {
     });
   };
 
-  const handleViewTask = (task: Task) => {
+  const handleViewTask = async (task: Task) => {
     setViewingTask(task);
     setOpenViewDialog(true);
+    // Cargar comentarios de la tarea
+    try {
+      const comments = await taskService.getTaskComments(task.id);
+      setTaskComments(comments);
+    } catch (error) {
+      console.error('Error al cargar comentarios:', error);
+      setTaskComments([]);
+    }
   };
 
   const handleCloseViewDialog = () => {
     setOpenViewDialog(false);
     setViewingTask(null);
+    setTaskComments([]);
+    setNewComment('');
+    setEditingComment(null);
+    setEditingCommentText('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -257,6 +276,58 @@ const Tasks: React.FC = () => {
       setError('Error al actualizar el estado de la tarea');
       console.error('Error:', error);
     }
+  };
+
+  // Funciones para manejar comentarios
+  const handleAddComment = async () => {
+    if (!viewingTask || !newComment.trim()) return;
+    
+    try {
+      const comment = await taskService.createTaskComment(viewingTask.id, newComment.trim());
+      setTaskComments([comment, ...taskComments]);
+      setNewComment('');
+    } catch (error: any) {
+      setError('Error al agregar comentario');
+      console.error('Error:', error);
+    }
+  };
+
+  const handleEditComment = (comment: TaskComment) => {
+    setEditingComment(comment);
+    setEditingCommentText(comment.content);
+  };
+
+  const handleUpdateComment = async () => {
+    if (!editingComment || !editingCommentText.trim()) return;
+    
+    try {
+      const updatedComment = await taskService.updateTaskComment(editingComment.id, editingCommentText.trim());
+      setTaskComments(taskComments.map(comment => 
+        comment.id === editingComment.id ? updatedComment : comment
+      ));
+      setEditingComment(null);
+      setEditingCommentText('');
+    } catch (error: any) {
+      setError('Error al actualizar comentario');
+      console.error('Error:', error);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: number) => {
+    if (!window.confirm('¿Estás seguro de que quieres eliminar este comentario?')) return;
+    
+    try {
+      await taskService.deleteTaskComment(commentId);
+      setTaskComments(taskComments.filter(comment => comment.id !== commentId));
+    } catch (error: any) {
+      setError('Error al eliminar comentario');
+      console.error('Error:', error);
+    }
+  };
+
+  const handleCancelEditComment = () => {
+    setEditingComment(null);
+    setEditingCommentText('');
   };
 
 
@@ -614,8 +685,8 @@ const Tasks: React.FC = () => {
         </DialogTitle>
         <DialogContent>
           {viewingTask && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 1 }}>
-              {/* Descripción */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+              {/* Descripción - Ocupa todo el ancho */}
               <Box>
                 <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                   Descripción
@@ -625,8 +696,11 @@ const Tasks: React.FC = () => {
                 </Typography>
               </Box>
 
+              {/* Información en dos columnas */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
+                {/* Columna izquierda */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {/* Estado y Prioridad */}
-              <Box sx={{ display: 'flex', gap: 2 }}>
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Estado
@@ -635,8 +709,10 @@ const Tasks: React.FC = () => {
                     label={viewingTask.status_display}
                     color={getStatusColor(viewingTask.status) as any}
                     variant="outlined"
+                      size="small"
                   />
                 </Box>
+                  
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Prioridad
@@ -645,8 +721,8 @@ const Tasks: React.FC = () => {
                     label={viewingTask.priority_display}
                     color={getPriorityColor(viewingTask.priority) as any}
                     variant="outlined"
+                      size="small"
                   />
-                </Box>
               </Box>
 
               {/* Información del Proyecto */}
@@ -654,18 +730,21 @@ const Tasks: React.FC = () => {
                 <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                   Proyecto
                 </Typography>
-                <Typography variant="body1">
+                    <Typography variant="body2">
                   {viewingTask.project_name}
                 </Typography>
+                  </Box>
               </Box>
 
+                {/* Columna derecha */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {/* Usuario Asignado */}
               {viewingTask.assigned_to_name && (
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Asignado a
                   </Typography>
-                  <Typography variant="body1">
+                      <Typography variant="body2">
                     {viewingTask.assigned_to_name}
                   </Typography>
                 </Box>
@@ -677,39 +756,138 @@ const Tasks: React.FC = () => {
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Fecha Límite
                   </Typography>
-                  <Typography variant="body1">
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body2">
                     {new Date(viewingTask.due_date).toLocaleDateString()}
+                        </Typography>
                     {isOverdue(viewingTask.due_date) && (
                       <Chip
                         label="Vencida"
                         size="small"
                         color="error"
                         variant="outlined"
-                        sx={{ ml: 1 }}
                       />
                     )}
-                  </Typography>
+                      </Box>
                 </Box>
               )}
 
               {/* Fechas de Creación y Actualización */}
-              <Box sx={{ display: 'flex', gap: 2 }}>
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Creada
-                  </Typography>
-                  <Typography variant="body2">
-                    {new Date(viewingTask.created_at).toLocaleDateString()}
-                  </Typography>
+                      Fechas
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+                      Creada: {new Date(viewingTask.created_at).toLocaleDateString()}
+                    </Typography>
+                    {viewingTask.updated_at && (
+                      <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+                        Actualizada: {new Date(viewingTask.updated_at).toLocaleDateString()}
+                      </Typography>
+                    )}
+                  </Box>
                 </Box>
-                {viewingTask.updated_at && (
+              </Box>
+
+              {/* Sección de Comentarios */}
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Comment />
+                  Comentarios ({taskComments.length})
+                  </Typography>
+
+                {/* Formulario para agregar comentario */}
+                <Box sx={{ mb: 2 }}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={2}
+                    placeholder="Escribe un comentario..."
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    variant="outlined"
+                    size="small"
+                  />
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.5 }}>
+                    <Button
+                      variant="contained"
+                      startIcon={<Send />}
+                      onClick={handleAddComment}
+                      disabled={!newComment.trim()}
+                      size="small"
+                    >
+                      Comentar
+                    </Button>
+                  </Box>
+                </Box>
+
+                {/* Lista de comentarios */}
+                {taskComments.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 1 }}>
+                    No hay comentarios aún
+                  </Typography>
+                ) : (
+                  <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
+                    {taskComments.map((comment) => (
+                      <Box key={comment.id} sx={{ mb: 1, pb: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+                        {editingComment?.id === comment.id ? (
+                          // Modo edición
+                          <Box>
+                            <TextField
+                              fullWidth
+                              multiline
+                              rows={2}
+                              value={editingCommentText}
+                              onChange={(e) => setEditingCommentText(e.target.value)}
+                              variant="outlined"
+                              size="small"
+                            />
+                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 0.5 }}>
+                              <Button size="small" onClick={handleCancelEditComment}>
+                                Cancelar
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="contained"
+                                onClick={handleUpdateComment}
+                                disabled={!editingCommentText.trim()}
+                              >
+                                Guardar
+                              </Button>
+                            </Box>
+                </Box>
+                        ) : (
+                          // Modo visualización
                   <Box>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      Actualizada
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.875rem' }}>
+                                  {comment.author_name}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                                  {new Date(comment.created_at).toLocaleDateString()}
                     </Typography>
-                    <Typography variant="body2">
-                      {new Date(viewingTask.updated_at).toLocaleDateString()}
+                              </Box>
+                              {comment.can_edit && (
+                                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                  <IconButton size="small" onClick={() => handleEditComment(comment)} sx={{ p: 0.5 }}>
+                                    <Edit fontSize="small" />
+                                  </IconButton>
+                                  {comment.can_delete && (
+                                    <IconButton size="small" onClick={() => handleDeleteComment(comment.id)} sx={{ p: 0.5 }}>
+                                      <Delete fontSize="small" />
+                                    </IconButton>
+                                  )}
+                                </Box>
+                              )}
+                            </Box>
+                            <Typography variant="body2" sx={{ fontSize: '0.875rem', lineHeight: 1.4 }}>
+                              {comment.content}
                     </Typography>
+                          </Box>
+                        )}
+                      </Box>
+                    ))}
                   </Box>
                 )}
               </Box>

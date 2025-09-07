@@ -1,5 +1,5 @@
 import axios, { AxiosResponse } from 'axios';
-import { AuthResponse, LoginCredentials, RegisterData, User, Project, Task } from '../types';
+import { AuthResponse, LoginCredentials, RegisterData, User, Project, Task, TaskComment } from '../types';
 
 // Configuración base de Axios
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -207,6 +207,26 @@ export const taskService = {
     const params = status ? { status } : {};
     const response = await api.get('/api/projects/my-tasks/', { params });
     return response.data;
+  },
+
+  // Servicios de comentarios de tareas
+  getTaskComments: async (taskId: number): Promise<TaskComment[]> => {
+    const response = await api.get(`/api/projects/tasks/${taskId}/comments/`);
+    return response.data;
+  },
+
+  createTaskComment: async (taskId: number, content: string): Promise<TaskComment> => {
+    const response = await api.post(`/api/projects/tasks/${taskId}/comments/create/`, { content });
+    return response.data;
+  },
+
+  updateTaskComment: async (commentId: number, content: string): Promise<TaskComment> => {
+    const response = await api.put(`/api/projects/comments/${commentId}/update/`, { content });
+    return response.data;
+  },
+
+  deleteTaskComment: async (commentId: number): Promise<void> => {
+    await api.delete(`/api/projects/comments/${commentId}/delete/`);
   },
 };
 
