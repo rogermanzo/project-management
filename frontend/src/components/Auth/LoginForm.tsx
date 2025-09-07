@@ -48,12 +48,16 @@ const LoginForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('LoginForm: Iniciando login con datos:', formData);
     setIsLoading(true);
 
     try {
+      console.log('LoginForm: Llamando a login()...');
       await login(formData);
+      console.log('LoginForm: Login exitoso, navegando al dashboard');
       navigate('/dashboard');
     } catch (error) {
+      console.error('LoginForm: Error en login:', error);
       // El error se maneja en el contexto
     } finally {
       setIsLoading(false);
