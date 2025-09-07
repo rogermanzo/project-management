@@ -160,24 +160,20 @@ const LoginForm: React.FC = () => {
             <Box textAlign="center">
               <Typography variant="body2">
                 ¿No tienes cuenta?{' '}
-                <Button
-                  variant="text"
-                  size="small"
+                <Box
+                  component="span"
                   onClick={() => navigate('/register')}
                   sx={{ 
-                    textTransform: 'none',
-                    fontSize: '0.875rem',
                     color: 'primary.main',
-                    minWidth: 'auto',
-                    p: 0,
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
                     '&:hover': {
-                      backgroundColor: 'transparent',
-                      textDecoration: 'underline'
+                      color: 'primary.dark'
                     }
                   }}
                 >
                   Regístrate aquí
-                </Button>
+                </Box>
               </Typography>
             </Box>
           </Box>

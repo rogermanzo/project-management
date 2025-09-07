@@ -203,24 +203,20 @@ const RegisterForm: React.FC = () => {
             <Box textAlign="center">
               <Typography variant="body2">
                 ¿Ya tienes cuenta?{' '}
-                <Button
-                  variant="text"
-                  size="small"
+                <Box
+                  component="span"
                   onClick={() => navigate('/login')}
                   sx={{ 
-                    textTransform: 'none',
-                    fontSize: '0.875rem',
                     color: 'primary.main',
-                    minWidth: 'auto',
-                    p: 0,
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
                     '&:hover': {
-                      backgroundColor: 'transparent',
-                      textDecoration: 'underline'
+                      color: 'primary.dark'
                     }
                   }}
                 >
                   Inicia sesión aquí
-                </Button>
+                </Box>
               </Typography>
             </Box>
           </Box>
