@@ -15,18 +15,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Tabs,
-  Tab,
-  Avatar,
-  AvatarGroup,
-  LinearProgress,
-  IconButton,
-  Tooltip,
-  Breadcrumbs,
-  Link,
-  TextField,
-  InputAdornment,
-  Badge,
 } from '@mui/material';
 import {
   Add,
@@ -34,47 +22,12 @@ import {
   CheckCircle,
   Schedule,
   TrendingUp,
-  Home,
-  Inbox,
-  Group,
-  Person,
-  Create,
-  Search,
-  FilterList,
-  MoreVert,
-  Share,
-  Notifications,
-  Dashboard as DashboardIcon,
-  Timeline,
-  CalendarToday,
-  ViewModule,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { projectService, taskService } from '../services/api';
 import { Project, Task } from '../types';
 import { PageHeader, Loading, ErrorAlert } from '../components/Common';
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`dashboard-tabpanel-${index}`}
-      aria-labelledby={`dashboard-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 0 }}>{children}</Box>}
-    </div>
-  );
-}
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -86,9 +39,6 @@ const Dashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [openViewDialog, setOpenViewDialog] = useState(false);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [tabValue, setTabValue] = useState(0);
-  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -96,21 +46,17 @@ const Dashboard: React.FC = () => {
         setIsLoading(true);
         const [projectsData, tasksData] = await Promise.all([
           projectService.getProjects(),
-          taskService.getUserTasks(),
+          taskService.getUserTasks(), // Obtener todas las tareas
         ]);
         
-        setProjects(projectsData);
-        setAllTasks(tasksData.tasks);
+        setProjects(projectsData.slice(0, 5)); // Últimos 5 proyectos
+        setAllTasks(tasksData.tasks); // Guardar todas las tareas para estadísticas
         
-        // Si hay un proyecto seleccionado, filtrar tareas por proyecto
-        if (selectedProject) {
-          const projectTasks = tasksData.tasks.filter(task => 
-            task.project === selectedProject.id
-          );
-          setTasks(projectTasks);
-        } else {
-          setTasks(tasksData.tasks);
-        }
+        // Filtrar tareas que no estén completadas (pendientes y en progreso)
+        const pendingTasks = tasksData.tasks.filter(task => 
+          task.status !== 'completed' && task.status !== 'cancelled'
+        );
+        setTasks(pendingTasks.slice(0, 10)); // Últimas 10 tareas pendientes/en progreso
       } catch (error: any) {
         setError('Error al cargar los datos del dashboard');
         console.error('Error:', error);
@@ -125,7 +71,7 @@ const Dashboard: React.FC = () => {
     const interval = setInterval(fetchDashboardData, 30000);
 
     return () => clearInterval(interval);
-  }, [selectedProject]);
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -157,21 +103,6 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'urgent':
-        return 'error';
-      case 'high':
-        return 'warning';
-      case 'medium':
-        return 'info';
-      case 'low':
-        return 'success';
-      default:
-        return 'default';
-    }
-  };
-
   const handleViewTask = (task: Task) => {
     setViewingTask(task);
     setOpenViewDialog(true);
@@ -184,43 +115,6 @@ const Dashboard: React.FC = () => {
 
   const isOverdue = (dueDate: string) => {
     return new Date(dueDate) < new Date();
-  };
-
-  // Filtrar tareas por estado
-  const getTasksByStatus = (status: string) => {
-    return tasks.filter(task => task.status === status);
-  };
-
-  // Filtrar tareas por búsqueda
-  const getFilteredTasks = (status?: string) => {
-    let filtered = tasks;
-    
-    if (status) {
-      filtered = filtered.filter(task => task.status === status);
-    }
-    
-    if (searchTerm) {
-      filtered = filtered.filter(task => 
-        task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        task.description.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    
-    return filtered;
-  };
-
-  // Obtener iniciales del nombre
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
-  };
-
-  // Renderizar avatar de usuario
-  const renderUserAvatar = (userName: string, size: number = 32) => {
-    return (
-      <Avatar sx={{ width: size, height: size, fontSize: size * 0.4 }}>
-        {getInitials(userName)}
-      </Avatar>
-    );
   };
 
   if (isLoading) {
@@ -236,372 +130,182 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <Box sx={{ display: 'flex', height: '100vh', bgcolor: 'grey.50' }}>
-      {/* Sidebar */}
-      <Box sx={{ 
-        width: 280, 
-        bgcolor: 'white', 
-        borderRight: 1, 
-        borderColor: 'divider',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
-        {/* Logo y nombre */}
-        <Box sx={{ p: 3, borderBottom: 1, borderColor: 'divider' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <DashboardIcon color="primary" />
-            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-              GestionPro
-                  </Typography>
+    <Box sx={{ p: 3 }}>
+      <PageHeader
+        title={`¡Bienvenido, ${user?.first_name}!`}
+        subtitle="Aquí tienes un resumen de tus proyectos y tareas"
+      />
+
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        {/* Estadísticas rápidas */}
+        <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+          <Card sx={{ flex: '1 1 200px', minWidth: '200px' }}>
+            <CardContent>
+              <Box display="flex" alignItems="center">
+                <Assignment color="primary" sx={{ mr: 2 }} />
+                <Box>
+                  <Typography variant="h4">{projects.length}</Typography>
+                  <Typography color="text.secondary">Proyectos</Typography>
                 </Box>
               </Box>
-
-        {/* Navegación principal */}
-        <Box sx={{ p: 2, flex: 1 }}>
-          <List sx={{ '& .MuiListItemButton-root': { borderRadius: 1, mb: 0.5 } }}>
-            <ListItem disablePadding>
-              <Button
-                fullWidth
-                startIcon={<Home />}
-                sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
-                onClick={() => navigate('/dashboard')}
-              >
-                Dashboard
-              </Button>
-            </ListItem>
-            <ListItem disablePadding>
-              <Button
-                fullWidth
-                startIcon={<Inbox />}
-                sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
-                onClick={() => navigate('/tasks')}
-              >
-                Inbox
-              </Button>
-            </ListItem>
-            <ListItem disablePadding>
-              <Button
-                fullWidth
-                startIcon={<Group />}
-                sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
-                onClick={() => navigate('/projects')}
-              >
-                Teams
-              </Button>
-            </ListItem>
-            <ListItem disablePadding>
-              <Button
-                fullWidth
-                startIcon={<Person />}
-                sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
-                onClick={() => navigate('/tasks')}
-              >
-                Assigned to me
-              </Button>
-            </ListItem>
-            <ListItem disablePadding>
-              <Button
-                fullWidth
-                startIcon={<Create />}
-                sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
-                onClick={() => navigate('/tasks')}
-              >
-                Created by me
-              </Button>
-            </ListItem>
-          </List>
-
-          {/* Favoritos */}
-          <Typography variant="subtitle2" sx={{ mt: 3, mb: 1, px: 2, color: 'text.secondary' }}>
-            Favorites
-                  </Typography>
-          <Box sx={{ px: 2 }}>
-            <Button
-              startIcon={<Add />}
-              sx={{ textTransform: 'none', color: 'text.secondary' }}
-            >
-              Add
-            </Button>
-        </Box>
-
-          {/* Proyectos */}
-          <Typography variant="subtitle2" sx={{ mt: 3, mb: 1, px: 2, color: 'text.secondary' }}>
-            Projects
-          </Typography>
-          <List sx={{ '& .MuiListItemButton-root': { borderRadius: 1, mb: 0.5 } }}>
-            {projects.map((project) => (
-              <ListItem key={project.id} disablePadding>
-                <Button
-                  fullWidth
-                  sx={{ 
-                    justifyContent: 'flex-start', 
-                    textTransform: 'none',
-                    bgcolor: selectedProject?.id === project.id ? 'primary.light' : 'transparent',
-                    color: selectedProject?.id === project.id ? 'primary.contrastText' : 'text.primary',
-                    '&:hover': {
-                      bgcolor: selectedProject?.id === project.id ? 'primary.main' : 'action.hover'
-                    }
-                  }}
-                  onClick={() => setSelectedProject(project)}
-                >
-                  {project.name}
-                </Button>
-              </ListItem>
-            ))}
-            <ListItem disablePadding>
-              <Button
-                startIcon={<Add />}
-                sx={{ textTransform: 'none', color: 'text.secondary', px: 2 }}
-                onClick={() => navigate('/projects')}
-              >
-                Add
-              </Button>
-            </ListItem>
-          </List>
-        </Box>
-
-        {/* Usuario */}
-        <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {renderUserAvatar(user?.full_name || 'Usuario', 40)}
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                {user?.full_name}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {user?.email}
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
-              </Box>
-              
-      {/* Contenido principal */}
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* Header */}
-        <Box sx={{ 
-          bgcolor: 'white', 
-          borderBottom: 1, 
-          borderColor: 'divider',
-          p: 2,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
-          <Breadcrumbs>
-            <Link color="inherit" href="#" onClick={() => navigate('/projects')}>
-              Projects
-            </Link>
-            <Typography color="text.primary">
-              {selectedProject ? selectedProject.name : 'All Projects'}
-                </Typography>
-          </Breadcrumbs>
-
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <IconButton>
-              <Badge badgeContent={1} color="error">
-                <Notifications />
-              </Badge>
-            </IconButton>
-            <IconButton>
-              <Share />
-            </IconButton>
-            <TextField
-              size="small"
-              placeholder="Search task..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ width: 200 }}
-            />
-            <IconButton>
-              <FilterList />
-            </IconButton>
-            <IconButton>
-              <MoreVert />
-            </IconButton>
-          </Box>
-        </Box>
-
-        {/* Tabs */}
-        <Box sx={{ bgcolor: 'white', borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
-            <Tab label="Spreadsheet" />
-            <Tab label="Timeline" />
-            <Tab label="Calendar" />
-            <Tab label="Board" />
-            <Tab icon={<Add />} />
-          </Tabs>
-        </Box>
-
-        {/* Contenido de tabs */}
-        <Box sx={{ flex: 1, overflow: 'auto', p: 3 }}>
-          <TabPanel value={tabValue} index={0}>
-            {/* Vista Spreadsheet - Columnas por estado */}
-            <Box sx={{ display: 'flex', gap: 3, height: '100%' }}>
-              {/* Columna: In Progress */}
-              <Card sx={{ flex: 1, minHeight: 600 }}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                    <Box sx={{ 
-                      width: 8, 
-                      height: 8, 
-                      borderRadius: '50%', 
-                      bgcolor: 'warning.main' 
-                    }} />
-                    <Typography variant="h6">In Progress</Typography>
-                                <Chip
-                      label={getFilteredTasks('in_progress').length} 
-                                  size="small"
-                      color="warning" 
-                    />
-                  </Box>
-                  
-                  <List>
-                    {getFilteredTasks('in_progress').map((task) => (
-                      <Card key={task.id} sx={{ mb: 2, '&:hover': { boxShadow: 2 } }}>
-                        <CardContent sx={{ p: 2 }}>
-                          <Typography variant="subtitle1" gutterBottom>
-                            {task.title}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                            {task.description}
-                          </Typography>
-                          
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                            <AvatarGroup max={3}>
-                              {task.assigned_to_name && renderUserAvatar(task.assigned_to_name, 24)}
-                            </AvatarGroup>
-                                <Typography variant="caption" color="text.secondary">
-                              {task.due_date && new Date(task.due_date).toLocaleDateString()}
-                                </Typography>
-                              </Box>
-                          
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                            <Chip 
-                              label={task.priority_display} 
-                              size="small" 
-                              color={getPriorityColor(task.priority) as any}
-                              variant="outlined"
-                            />
-                            <Box sx={{ flex: 1 }}>
-                              <LinearProgress 
-                                variant="determinate" 
-                                value={task.status === 'completed' ? 100 : 50} 
-                                sx={{ height: 4, borderRadius: 2 }}
-                              />
-                            </Box>
-                            <Typography variant="caption">
-                              {task.status === 'completed' ? '100%' : '50%'}
-                            </Typography>
-                          </Box>
-                        </CardContent>
-                      </Card>
-                  ))}
-                </List>
-                  
-                <Button
-                    fullWidth
-                  variant="outlined"
-                  startIcon={<Add />}
-                    sx={{ mt: 2 }}
-                  onClick={() => navigate('/tasks')}
-                >
-                    Add task
-                </Button>
-                </CardContent>
-              </Card>
-
-              {/* Columna: Ready to check by PM */}
-              <Card sx={{ flex: 1, minHeight: 600 }}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                    <Box sx={{ 
-                      width: 8, 
-                      height: 8, 
-                      borderRadius: '50%', 
-                      bgcolor: 'primary.main' 
-                    }} />
-                    <Typography variant="h6">Ready to check by PM</Typography>
-                    <Chip 
-                      label={getFilteredTasks('completed').length} 
-                      size="small" 
-                      color="primary" 
-                    />
-              </Box>
-              
-                  <List>
-                    {getFilteredTasks('completed').map((task) => (
-                      <Card key={task.id} sx={{ mb: 2, '&:hover': { boxShadow: 2 } }}>
-                        <CardContent sx={{ p: 2 }}>
-                          <Typography variant="subtitle1" gutterBottom>
-                            {task.title}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                            {task.description}
-                </Typography>
-                          
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                            <AvatarGroup max={3}>
-                              {task.assigned_to_name && renderUserAvatar(task.assigned_to_name, 24)}
-                            </AvatarGroup>
-                                <Typography variant="caption" color="text.secondary">
-                              {task.due_date && new Date(task.due_date).toLocaleDateString()}
-                            </Typography>
-                          </Box>
-                          
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                            <Chip 
-                              label={task.priority_display} 
-                              size="small" 
-                              color={getPriorityColor(task.priority) as any}
-                              variant="outlined"
-                            />
-                            <Box sx={{ flex: 1 }}>
-                              <LinearProgress 
-                                variant="determinate" 
-                                value={100} 
-                                sx={{ height: 4, borderRadius: 2 }}
-                              />
-                            </Box>
-                            <Typography variant="caption">100%</Typography>
-                          </Box>
-                        </CardContent>
-                      </Card>
-                  ))}
-                </List>
-                  
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    startIcon={<Add />}
-                    sx={{ mt: 2 }}
-                    onClick={() => navigate('/tasks')}
-                  >
-                    Add task
-                  </Button>
             </CardContent>
           </Card>
-            </Box>
-          </TabPanel>
 
-          <TabPanel value={tabValue} index={1}>
-            <Typography>Timeline view - Coming soon</Typography>
-          </TabPanel>
+          <Card sx={{ flex: '1 1 200px', minWidth: '200px' }}>
+            <CardContent>
+              <Box display="flex" alignItems="center">
+                <CheckCircle color="success" sx={{ mr: 2 }} />
+                <Box>
+                  <Typography variant="h4">
+                    {allTasks.filter(task => task.status === 'completed').length}
+                  </Typography>
+                  <Typography color="text.secondary">Tareas Completadas</Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
 
-          <TabPanel value={tabValue} index={2}>
-            <Typography>Calendar view - Coming soon</Typography>
-          </TabPanel>
+          <Card sx={{ flex: '1 1 200px', minWidth: '200px' }}>
+            <CardContent>
+              <Box display="flex" alignItems="center">
+                <Schedule color="warning" sx={{ mr: 2 }} />
+                <Box>
+                  <Typography variant="h4">
+                    {allTasks.filter(task => task.status !== 'completed' && task.status !== 'cancelled').length}
+                  </Typography>
+                  <Typography color="text.secondary">Tareas Pendientes</Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
 
-          <TabPanel value={tabValue} index={3}>
-            <Typography>Board view - Coming soon</Typography>
-          </TabPanel>
+          <Card sx={{ flex: '1 1 200px', minWidth: '200px' }}>
+            <CardContent>
+              <Box display="flex" alignItems="center">
+                <TrendingUp color="info" sx={{ mr: 2 }} />
+                <Box>
+                  <Typography variant="h4">
+                    {Math.round(projects.reduce((acc, project) => acc + project.progress_percentage, 0) / projects.length) || 0}%
+                  </Typography>
+                  <Typography color="text.secondary">Progreso Promedio</Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Box>
+
+        {/* Proyectos recientes y tareas pendientes */}
+        <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+          <Card sx={{ flex: '1 1 400px', minWidth: '400px' }}>
+            <CardContent>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                <Typography variant="h6">Proyectos Recientes</Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<Add />}
+                  onClick={() => navigate('/projects')}
+                >
+                  Ver Todos
+                </Button>
+              </Box>
+              
+              {projects.length === 0 ? (
+                <Typography color="text.secondary" align="center" py={2}>
+                  No tienes proyectos aún
+                </Typography>
+              ) : (
+                <List>
+                  {projects.map((project, index) => (
+                    <React.Fragment key={project.id}>
+                      <ListItem
+                        component="div"
+                        onClick={() => navigate(`/projects/${project.id}`)}
+                        sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
+                      >
+                        <ListItemIcon>
+                          <Assignment />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={project.name}
+                          secondary={
+                            <Typography component="div" variant="body2" color="text.secondary">
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Chip
+                                  label={project.status_display}
+                                  size="small"
+                                  color={getStatusColor(project.status) as any}
+                                />
+                                <Typography variant="caption" color="text.secondary">
+                                  {project.progress_percentage}% completado
+                                </Typography>
+                              </Box>
+                            </Typography>
+                          }
+                        />
+                      </ListItem>
+                      {index < projects.length - 1 && <Divider />}
+                    </React.Fragment>
+                  ))}
+                </List>
+              )}
+            </CardContent>
+          </Card>
+          <Card sx={{ flex: '1 1 400px', minWidth: '400px' }}>
+            <CardContent>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                <Typography variant="h6">Tareas Pendientes</Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<Add />}
+                  onClick={() => navigate('/tasks')}
+                >
+                  Ver Todas
+                </Button>
+              </Box>
+              
+              {tasks.length === 0 ? (
+                <Typography color="text.secondary" align="center" py={2}>
+                  No tienes tareas asignadas
+                </Typography>
+              ) : (
+                <List>
+                  {tasks.slice(0, 5).map((task, index) => (
+                    <React.Fragment key={task.id}>
+                      <ListItem
+                        component="div"
+                        onClick={() => handleViewTask(task)}
+                        sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
+                      >
+                        <ListItemIcon>
+                          <Assignment />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={task.title}
+                          secondary={
+                            <Typography component="div" variant="body2" color="text.secondary">
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Chip
+                                  label={task.status_display}
+                                  size="small"
+                                  color={getTaskStatusColor(task.status) as any}
+                                />
+                                <Typography variant="caption" color="text.secondary">
+                                  {task.project_name}
+                                </Typography>
+                              </Box>
+                            </Typography>
+                          }
+                        />
+                      </ListItem>
+                      {index < Math.min(tasks.length, 5) - 1 && <Divider />}
+                    </React.Fragment>
+                  ))}
+                </List>
+              )}
+            </CardContent>
+          </Card>
         </Box>
       </Box>
 
@@ -646,7 +350,7 @@ const Dashboard: React.FC = () => {
                   </Typography>
                   <Chip
                     label={viewingTask.priority_display}
-                    color={getPriorityColor(viewingTask.priority) as any}
+                    color="default"
                     variant="outlined"
                   />
                 </Box>
