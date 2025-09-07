@@ -7,7 +7,6 @@ import {
   Button,
   Typography,
   Alert,
-  Link,
   InputAdornment,
   IconButton,
 } from '@mui/material';
@@ -161,14 +160,24 @@ const LoginForm: React.FC = () => {
             <Box textAlign="center">
               <Typography variant="body2">
                 ¿No tienes cuenta?{' '}
-                <Link
-                  component="button"
-                  variant="body2"
+                <Button
+                  variant="text"
+                  size="small"
                   onClick={() => navigate('/register')}
-                  sx={{ textDecoration: 'none' }}
+                  sx={{ 
+                    textTransform: 'none',
+                    fontSize: '0.875rem',
+                    color: 'primary.main',
+                    minWidth: 'auto',
+                    p: 0,
+                    '&:hover': {
+                      backgroundColor: 'transparent',
+                      textDecoration: 'underline'
+                    }
+                  }}
                 >
                   Regístrate aquí
-                </Link>
+                </Button>
               </Typography>
             </Box>
           </Box>
