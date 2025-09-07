@@ -14,4 +14,4 @@ services:
         value: False
       - key: ALLOWED_HOSTS
         value: gestion-proyecto-backend.onrender.com
-    healthCheckPath: /admin/
+    healthCheckPath: /health/simple/
