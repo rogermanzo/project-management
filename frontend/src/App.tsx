@@ -97,6 +97,8 @@ function App() {
               }
             />
             
+            
+            
             {/* Redirección por defecto */}
             <Route path="/" element={<Navigate to="/login" replace />} />
             

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Box,
   Card,
-  CardContent,
   Typography,
   Button,
   Chip,
@@ -29,10 +28,7 @@ import {
   Edit,
   Delete,
   Assignment,
-  Schedule,
-  CheckCircle,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { taskService, userService, projectService } from '../services/api';
 import { Task, User, Project } from '../types';
@@ -62,7 +58,6 @@ function TabPanel(props: TabPanelProps) {
 
 const Tasks: React.FC = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -273,6 +268,7 @@ const Tasks: React.FC = () => {
       console.error('Error:', error);
     }
   };
+
 
   const getStatusColor = (status: string) => {
     switch (status) {

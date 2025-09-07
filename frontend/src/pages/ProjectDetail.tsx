@@ -294,13 +294,6 @@ const ProjectDetail: React.FC = () => {
   return (
     <Box>
       <Box sx={{ mb: 4 }}>
-        <Button
-          variant="outlined"
-          onClick={() => navigate('/projects')}
-          sx={{ mb: 2 }}
-        >
-          ← Volver a Proyectos
-        </Button>
         
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Box>
