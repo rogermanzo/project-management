@@ -59,10 +59,10 @@ api.interceptors.response.use(
         }
       } catch (refreshError) {
         console.error('Error al refrescar token:', refreshError);
-        // Si falla el refresh, limpiar tokens y redirigir al login
+        // Si falla el refresh, limpiar tokens
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
-        window.location.href = '/login';
+        // No redirigir aquí, dejar que el contexto maneje la redirección
       }
     }
 

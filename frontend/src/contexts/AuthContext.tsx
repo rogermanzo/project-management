@@ -109,7 +109,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           dispatch({ type: 'AUTH_FAILURE', payload: 'Sesión expirada' });
         }
       } else {
-        dispatch({ type: 'AUTH_FAILURE', payload: '' });
+        dispatch({ type: 'AUTH_FAILURE', payload: null });
       }
     };
 

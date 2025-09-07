@@ -40,7 +40,7 @@ const LoginForm: React.FC = () => {
   // Limpiar errores al montar el componente
   React.useEffect(() => {
     clearError();
-  }, [clearError]);
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -156,26 +156,26 @@ const LoginForm: React.FC = () => {
             >
               {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
             </Button>
+          </Box>
 
-            <Box textAlign="center">
-              <Typography variant="body2">
-                ¿No tienes cuenta?{' '}
-                <Box
-                  component="span"
-                  onClick={() => navigate('/register')}
-                  sx={{ 
-                    color: 'primary.main',
-                    cursor: 'pointer',
-                    textDecoration: 'underline',
-                    '&:hover': {
-                      color: 'primary.dark'
-                    }
-                  }}
-                >
-                  Regístrate aquí
-                </Box>
-              </Typography>
-            </Box>
+          <Box textAlign="center" sx={{ mt: 2 }}>
+            <Typography variant="body2">
+              ¿No tienes cuenta?{' '}
+              <Box
+                component="span"
+                onClick={() => navigate('/register')}
+                sx={{ 
+                  color: 'primary.main',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  '&:hover': {
+                    color: 'primary.dark'
+                  }
+                }}
+              >
+                Regístrate aquí
+              </Box>
+            </Typography>
           </Box>
         </CardContent>
       </Card>

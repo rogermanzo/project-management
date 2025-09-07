@@ -42,7 +42,7 @@ const RegisterForm: React.FC = () => {
   // Limpiar errores al montar el componente
   React.useEffect(() => {
     clearError();
-  }, [clearError]);
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -199,26 +199,26 @@ const RegisterForm: React.FC = () => {
             >
               {isLoading ? 'Creando cuenta...' : 'Crear Cuenta'}
             </Button>
+          </Box>
 
-            <Box textAlign="center">
-              <Typography variant="body2">
-                ¿Ya tienes cuenta?{' '}
-                <Box
-                  component="span"
-                  onClick={() => navigate('/login')}
-                  sx={{ 
-                    color: 'primary.main',
-                    cursor: 'pointer',
-                    textDecoration: 'underline',
-                    '&:hover': {
-                      color: 'primary.dark'
-                    }
-                  }}
-                >
-                  Inicia sesión aquí
-                </Box>
-              </Typography>
-            </Box>
+          <Box textAlign="center" sx={{ mt: 2 }}>
+            <Typography variant="body2">
+              ¿Ya tienes cuenta?{' '}
+              <Box
+                component="span"
+                onClick={() => navigate('/login')}
+                sx={{ 
+                  color: 'primary.main',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  '&:hover': {
+                    color: 'primary.dark'
+                  }
+                }}
+              >
+                Inicia sesión aquí
+              </Box>
+            </Typography>
           </Box>
         </CardContent>
       </Card>
