@@ -81,7 +81,7 @@ const Tasks: React.FC = () => {
   useEffect(() => {
     fetchTasks();
     fetchUsersAndProjects();
-  }, [tabValue]);
+  }, []);
 
   // Actualizar tareas automáticamente cada 30 segundos
   useEffect(() => {
@@ -90,7 +90,7 @@ const Tasks: React.FC = () => {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [tabValue]);
+  }, []);
 
   const fetchUsersAndProjects = async () => {
     try {
@@ -117,38 +117,28 @@ const Tasks: React.FC = () => {
     return users;
   };
 
+  // Filtrar tareas según la pestaña activa
+  const getFilteredTasks = () => {
+    switch (tabValue) {
+      case 0: // Todas
+        return tasks;
+      case 1: // Pendientes
+        return tasks.filter(task => task.status === 'pending');
+      case 2: // En Progreso
+        return tasks.filter(task => task.status === 'in_progress');
+      case 3: // Completadas
+        return tasks.filter(task => task.status === 'completed');
+      default:
+        return tasks;
+    }
+  };
+
   const fetchTasks = async () => {
     try {
       setIsLoading(true);
-      let statusFilter: string | undefined;
-      
-      switch (tabValue) {
-        case 0: // Todas
-          statusFilter = undefined;
-          break;
-        case 1: // Pendientes
-          statusFilter = 'pending';
-          break;
-        case 2: // En progreso
-          statusFilter = 'in_progress';
-          break;
-        case 3: // Completadas
-          statusFilter = 'completed';
-          break;
-      }
-
-      console.log(`Enviando filtro al backend: ${statusFilter}`);
-      const data = await taskService.getUserTasks(statusFilter);
-      console.log(`Tareas recibidas: ${data.tasks.length}, Filtro aplicado: ${statusFilter}`);
-      
-      // Filtro adicional en el frontend como medida de seguridad
-      let filteredTasks = data.tasks;
-      if (statusFilter) {
-        filteredTasks = data.tasks.filter(task => task.status === statusFilter);
-        console.log(`Después del filtro frontend: ${filteredTasks.length} tareas`);
-      }
-
-      setTasks(filteredTasks);
+      // Cargar todas las tareas sin filtro
+      const data = await taskService.getUserTasks();
+      setTasks(data.tasks);
     } catch (error: any) {
       setError('Error al cargar las tareas');
       console.error('Error:', error);
@@ -339,29 +329,29 @@ const Tasks: React.FC = () => {
 
         <TabPanel value={tabValue} index={0}>
           <Typography variant="h6" gutterBottom>
-            Todas las Tareas ({tasks.length})
+            Todas las Tareas ({getFilteredTasks().length})
           </Typography>
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
           <Typography variant="h6" gutterBottom>
-            Tareas Pendientes ({tasks.length})
+            Tareas Pendientes ({getFilteredTasks().length})
           </Typography>
         </TabPanel>
 
         <TabPanel value={tabValue} index={2}>
           <Typography variant="h6" gutterBottom>
-            Tareas en Progreso ({tasks.length})
+            Tareas en Progreso ({getFilteredTasks().length})
           </Typography>
         </TabPanel>
 
         <TabPanel value={tabValue} index={3}>
           <Typography variant="h6" gutterBottom>
-            Tareas Completadas ({tasks.length})
+            Tareas Completadas ({getFilteredTasks().length})
           </Typography>
         </TabPanel>
 
-        {tasks.length === 0 ? (
+        {getFilteredTasks().length === 0 ? (
           <Box sx={{ p: 3, textAlign: 'center' }}>
             <Assignment sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
             <Typography variant="h6" color="text.secondary" gutterBottom>
@@ -376,7 +366,7 @@ const Tasks: React.FC = () => {
           </Box>
         ) : (
           <List>
-            {tasks.map((task, index) => (
+            {getFilteredTasks().map((task, index) => (
               <React.Fragment key={task.id}>
                 <ListItem
                   component="div"
@@ -496,7 +486,7 @@ const Tasks: React.FC = () => {
                     </Box>
                   )}
                 </ListItem>
-                {index < tasks.length - 1 && <Divider />}
+                {index < getFilteredTasks().length - 1 && <Divider />}
               </React.Fragment>
             ))}
           </List>
