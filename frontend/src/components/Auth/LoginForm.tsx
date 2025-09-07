@@ -22,7 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { LoginCredentials } from '../../types';
 
 const LoginForm: React.FC = () => {
-  const { login, error, clearError } = useAuth();
+  const { login, error, clearError, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState<LoginCredentials>({
     username: '',
@@ -31,9 +31,15 @@ const LoginForm: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Redirigir si ya está autenticado
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
   // Limpiar errores al montar el componente
   React.useEffect(() => {
-    console.log('LoginForm: Componente montado');
     clearError();
   }, [clearError]);
 

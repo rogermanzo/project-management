@@ -5,7 +5,6 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import SmartRedirect from './components/SmartRedirect';
 import Layout from './components/Layout/Layout';
 import LoginForm from './components/Auth/LoginForm';
 import RegisterForm from './components/Auth/RegisterForm';
@@ -98,8 +97,8 @@ function App() {
               }
             />
             
-            {/* Redirección por defecto - inteligente basada en autenticación */}
-            <Route path="/" element={<SmartRedirect />} />
+            {/* Redirección por defecto */}
+            <Route path="/" element={<Navigate to="/login" replace />} />
             
             {/* Ruta 404 - redirigir a login para rutas no encontradas */}
             <Route path="*" element={<Navigate to="/login" replace />} />

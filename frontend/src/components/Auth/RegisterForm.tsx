@@ -18,7 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import { RegisterData } from '../../types';
 
 const RegisterForm: React.FC = () => {
-  const { register, error, clearError } = useAuth();
+  const { register, error, clearError, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState<RegisterData>({
     username: '',
@@ -32,9 +32,15 @@ const RegisterForm: React.FC = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
 
+  // Redirigir si ya está autenticado
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
   // Limpiar errores al montar el componente
   React.useEffect(() => {
-    console.log('RegisterForm: Componente montado');
     clearError();
   }, [clearError]);
 
