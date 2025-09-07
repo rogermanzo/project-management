@@ -34,16 +34,21 @@ ALLOWED_HOSTS = [
     '.render.com',
     '.herokuapp.com',
     '.onrender.com',
-    'gestion-proyecto-backend.onrender.com',
+    'project-management-c7wf.onrender.com',
     # Agrega tu dominio personalizado aquí
 ]
 
 # Configuración de CORS
 CORS_ALLOWED_ORIGINS = [
+    "https://gestion-proyecto-frontend.onrender.com",
     "https://tu-frontend.vercel.app",
     "https://tu-frontend.netlify.app",
     # Agrega las URLs de tu frontend desplegado
 ]
+
+# Configuración adicional de CORS
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False
 
 # Configuración de canales para producción
 CHANNEL_LAYERS = {

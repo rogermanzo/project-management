@@ -13,5 +13,5 @@ services:
       - key: DEBUG
         value: False
       - key: ALLOWED_HOSTS
-        value: gestion-proyecto-backend.onrender.com
+        value: project-management-c7wf.onrender.com
     healthCheckPath: /health/simple/
