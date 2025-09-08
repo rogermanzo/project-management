@@ -29,6 +29,13 @@ Sistema web full-stack para gestión de proyectos, tareas y equipos de trabajo.
 cd backend
 pip install -r requirements.txt
 python manage.py migrate
+
+# Para WebSocket (ASGI) - RECOMENDADO
+python start_websocket_server.py
+# O usar el script de Windows:
+# start_websocket.bat
+
+# Alternativa: Servidor tradicional (sin WebSocket)
 python manage.py runserver
 ```
 
@@ -38,6 +45,16 @@ cd frontend
 npm install
 npm start
 ```
+
+## WebSocket
+
+El sistema incluye notificaciones en tiempo real usando WebSocket:
+
+- **Endpoint WebSocket**: `ws://localhost:8000/ws/notifications/?token={token}`
+- **Notificaciones automáticas**: Al asignar tareas, completar tareas, etc.
+- **Botón de prueba**: Usar el botón "🧪 Test" en las notificaciones
+
+**⚠️ Importante**: Para que funcionen las notificaciones en tiempo real, el backend debe ejecutarse con ASGI. Django automáticamente usa ASGI cuando detecta `daphne` instalado.
 
 ## API Endpoints
 

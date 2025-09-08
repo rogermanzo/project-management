@@ -92,15 +92,6 @@ const ProjectDetail: React.FC = () => {
   }, [id]);
 
   // Actualizar datos del proyecto automáticamente cada 30 segundos
-  useEffect(() => {
-    if (!id) return;
-
-    const interval = setInterval(() => {
-      fetchProjectData();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [id]);
 
   const fetchUsers = async () => {
     try {
@@ -171,8 +162,8 @@ const ProjectDetail: React.FC = () => {
   const handleTaskSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validar que se haya asignado un usuario
-    if (!taskFormData.assigned_to) {
+    // Validar que se haya asignado un usuario solo si es admin
+    if (user?.role === 'admin' && !taskFormData.assigned_to) {
       setError('Debe asignar la tarea a un usuario');
       return;
     }
@@ -183,7 +174,7 @@ const ProjectDetail: React.FC = () => {
         description: taskFormData.description,
         status: taskFormData.status,
         priority: taskFormData.priority,
-        assigned_to: Number(taskFormData.assigned_to),
+        assigned_to: taskFormData.assigned_to ? Number(taskFormData.assigned_to) : undefined,
         due_date: taskFormData.due_date ? new Date(taskFormData.due_date).toISOString() : undefined,
       };
 
@@ -584,24 +575,26 @@ const ProjectDetail: React.FC = () => {
                   </Select>
                 </FormControl>
               </Box>
-              <FormControl fullWidth required>
-                <InputLabel>Asignado a</InputLabel>
-                <Select
-                  value={taskFormData.assigned_to}
-                  label="Asignado a"
-                  onChange={(e) => setTaskFormData({ ...taskFormData, assigned_to: e.target.value })}
-                  required
-                >
-                  <MenuItem value="" disabled>
-                    <em>Seleccione un usuario</em>
-                  </MenuItem>
-                  {users.map((user) => (
-                    <MenuItem key={user.id} value={user.id.toString()}>
-                      {user.full_name}
+              {user?.role === 'admin' && (
+                <FormControl fullWidth required>
+                  <InputLabel>Asignado a</InputLabel>
+                  <Select
+                    value={taskFormData.assigned_to}
+                    label="Asignado a"
+                    onChange={(e) => setTaskFormData({ ...taskFormData, assigned_to: e.target.value })}
+                    required
+                  >
+                    <MenuItem value="" disabled>
+                      <em>Seleccione un usuario</em>
                     </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                    {users.map((user) => (
+                      <MenuItem key={user.id} value={user.id.toString()}>
+                        {user.full_name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
               <TextField
                 fullWidth
                 label="Fecha Límite"

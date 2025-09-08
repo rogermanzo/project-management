@@ -31,6 +31,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',  # Debe ir primero para ASGI
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -177,4 +178,10 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels.layers.InMemoryChannelLayer'
     }
+}
+
+# Configuración adicional para WebSocket
+CHANNEL_LAYERS['default']['CONFIG'] = {
+    'capacity': 1000,
+    'expiry': 60,
 }

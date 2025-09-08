@@ -94,22 +94,26 @@ class TaskListView(generics.ListCreateAPIView):
         if project_id:
             try:
                 project = Project.objects.get(id=project_id)
-                if not (project.owner == user or 
-                        project.members.filter(user=user).exists() or 
-                        user.is_admin()):
+                # Solo super admin o usuarios que son miembros del proyecto Y tienen tareas asignadas
+                if user.is_superuser or user.is_admin():
+                    queryset = queryset.filter(project=project)
+                elif project.members.filter(user=user).exists():
+                    queryset = queryset.filter(
+                        project=project,
+                        assigned_to=user
+                    )
+                else:
                     return Task.objects.none()
-                queryset = queryset.filter(project=project)
             except Project.DoesNotExist:
                 return Task.objects.none()
         else:
-            if user.is_admin():
-                pass
-            elif user.is_collaborator():
-                queryset = queryset.filter(
-                    Q(project__owner=user) | Q(project__members__user=user)
-                ).distinct()
+            if user.is_superuser or user.is_admin():
+                pass  # Super admin ve todas las tareas
             else:
-                queryset = queryset.filter(project__members__user=user).distinct()
+                # Usuarios solo ven tareas asignadas a ellos Y donde son miembros del proyecto
+                queryset = queryset.filter(
+                    Q(assigned_to=user) & Q(project__members__user=user)
+                ).distinct()
         
         return queryset
     
@@ -172,7 +176,30 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
                 {'error': 'No tienes permisos para editar esta tarea.'},
                 status=status.HTTP_403_FORBIDDEN
             )
-        return super().update(request, *args, **kwargs)
+        
+        # Guardar el assigned_to anterior para comparar
+        old_assigned_to = instance.assigned_to
+        
+        # Realizar la actualización
+        response = super().update(request, *args, **kwargs)
+        
+        # Verificar si se asignó la tarea a un nuevo usuario
+        if response.status_code == 200:
+            updated_task = self.get_object()
+            if (old_assigned_to != updated_task.assigned_to and 
+                updated_task.assigned_to is not None):
+                # Enviar notificación al nuevo usuario asignado
+                from .notification_views import send_notification
+                send_notification(
+                    user=updated_task.assigned_to,
+                    notification_type='task_assigned',
+                    title='Tarea asignada',
+                    message=f'Se te ha asignado la tarea: {updated_task.title}',
+                    project=updated_task.project,
+                    task=updated_task
+                )
+        
+        return response
     
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -519,25 +546,24 @@ def delete_task_comment(request, comment_id):
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def user_tasks(request):
-    """Vista para tareas del usuario (asignadas y de proyectos donde es miembro)"""
+    """Vista para tareas del usuario (solo super admin ve todas, otros solo las asignadas)"""
     user = request.user
     status_filter = request.query_params.get('status')
     
-    print(f"Usuario: {user.username}, Rol: {user.role}, Filtro: {status_filter}")
+    print(f"Usuario: {user.username}, Rol: {user.role}, Superuser: {user.is_superuser}, Filtro: {status_filter}")
     
-    # Los administradores ven todas las tareas
-    if user.is_admin():
+    # Solo super administradores ven todas las tareas
+    if user.is_superuser or user.is_admin():
         queryset = Task.objects.all()
-        print(f"Admin - Total tareas antes del filtro: {queryset.count()}")
+        print(f"Super Admin - Total tareas antes del filtro: {queryset.count()}")
     else:
-        # Usuarios ven tareas asignadas a ellos Y tareas de proyectos donde son miembros
-        # Usar una sola consulta con Q objects para evitar problemas de combinación
+        # Usuarios solo ven tareas asignadas a ellos Y donde son miembros del proyecto
         from django.db.models import Q
         
         queryset = Task.objects.filter(
-            Q(assigned_to=user) | Q(project__members__user=user)
+            Q(assigned_to=user) & Q(project__members__user=user)
         ).distinct()
-        print(f"Usuario - Total tareas (asignadas + de proyectos): {queryset.count()}")
+        print(f"Usuario - Total tareas (asignadas Y miembro del proyecto): {queryset.count()}")
     
     if status_filter:
         queryset = queryset.filter(status=status_filter)

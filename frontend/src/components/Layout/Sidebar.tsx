@@ -27,6 +27,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { projectService } from '../../services/api';
 import { Project } from '../../types';
+import NotificationBell from '../Notifications/NotificationBell';
 
 const drawerWidth = 280;
 
@@ -110,7 +111,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onToggle }) => {
           p: 2,
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
+          justifyContent: 'space-between',
           borderBottom: '1px solid',
           borderColor: 'divider',
         }}
@@ -118,6 +119,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onToggle }) => {
         <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
           Gestión Proyectos
         </Typography>
+        <NotificationBell />
       </Box>
 
       {/* User Info */}

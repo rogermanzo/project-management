@@ -17,9 +17,11 @@ import {
   NotificationsNone as NotificationsNoneIcon,
 } from '@mui/icons-material';
 import { useNotifications } from '../../contexts/NotificationContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 const NotificationBell: React.FC = () => {
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAllAsRead, isConnected } = useNotifications();
+  const { user } = useAuth();
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
 
   const formatTimeAgo = (dateString: string) => {
@@ -43,6 +45,10 @@ const NotificationBell: React.FC = () => {
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
+    // Marcar todas las notificaciones como leídas al abrir el popover
+    if (unreadCount > 0) {
+      markAllAsRead();
+    }
   };
 
   const handleClose = () => {
@@ -50,15 +56,9 @@ const NotificationBell: React.FC = () => {
   };
 
   const handleNotificationClick = (notification: any) => {
-    if (!notification.is_read) {
-      markAsRead(notification.id);
-    }
     handleClose();
   };
 
-  const handleMarkAllAsRead = () => {
-    markAllAsRead();
-  };
 
   const open = Boolean(anchorEl);
   const id = open ? 'notification-popover' : undefined;
@@ -69,8 +69,17 @@ const NotificationBell: React.FC = () => {
         color="inherit"
         onClick={handleClick}
         aria-describedby={id}
+        title={isConnected ? 'Notificaciones en tiempo real' : 'Notificaciones (modo offline)'}
       >
-        <Badge badgeContent={unreadCount} color="error">
+        <Badge 
+          badgeContent={unreadCount} 
+          color="error"
+          sx={{
+            '& .MuiBadge-badge': {
+              backgroundColor: isConnected ? '#4caf50' : '#ff9800'
+            }
+          }}
+        >
           {unreadCount > 0 ? <NotificationsIcon /> : <NotificationsNoneIcon />}
         </Badge>
       </IconButton>
@@ -94,12 +103,24 @@ const NotificationBell: React.FC = () => {
       >
         <Box sx={{ p: 2 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6">Notificaciones</Typography>
-            {unreadCount > 0 && (
-              <Button size="small" onClick={handleMarkAllAsRead}>
-                Marcar todas como leídas
-              </Button>
-            )}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="h6">Notificaciones</Typography>
+              <Box
+                sx={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  backgroundColor: isConnected ? '#4caf50' : '#ff9800',
+                  animation: isConnected ? 'pulse 2s infinite' : 'none',
+                  '@keyframes pulse': {
+                    '0%': { opacity: 1 },
+                    '50%': { opacity: 0.5 },
+                    '100%': { opacity: 1 },
+                  },
+                }}
+                title={isConnected ? 'Conectado en tiempo real' : 'Modo offline'}
+              />
+            </Box>
           </Box>
 
           {(notifications || []).length === 0 ? (

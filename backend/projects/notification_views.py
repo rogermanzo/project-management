@@ -71,6 +71,8 @@ def send_notification(user, notification_type, title, message, project=None, tas
     """
     Función helper para enviar notificaciones
     """
+    print(f"🔔 Creating notification for user {user.id}: {title}")
+    
     # Crear la notificación en la base de datos
     notification = Notification.objects.create(
         user=user,
@@ -81,30 +83,40 @@ def send_notification(user, notification_type, title, message, project=None, tas
         task=task
     )
     
+    print(f"✅ Notification created with ID: {notification.id}")
+    
     # Enviar notificación en tiempo real via WebSocket
     channel_layer = get_channel_layer()
     if channel_layer:
-        async_to_sync(channel_layer.group_send)(
-            f'notifications_{user.id}',
-            {
-                'type': 'notification_message',
-                'notification': {
-                    'id': notification.id,
-                    'type': notification.type,
-                    'title': notification.title,
-                    'message': notification.message,
-                    'is_read': notification.is_read,
-                    'created_at': notification.created_at.isoformat(),
-                    'project': {
-                        'id': project.id,
-                        'name': project.name
-                    } if project else None,
-                    'task': {
-                        'id': task.id,
-                        'title': task.title
-                    } if task else None,
-                }
+        group_name = f'notifications_{user.id}'
+        message_data = {
+            'type': 'notification_message',
+            'notification': {
+                'id': notification.id,
+                'type': notification.type,
+                'title': notification.title,
+                'message': notification.message,
+                'is_read': notification.is_read,
+                'created_at': notification.created_at.isoformat(),
+                'project': {
+                    'id': project.id,
+                    'name': project.name
+                } if project else None,
+                'task': {
+                    'id': task.id,
+                    'title': task.title
+                } if task else None,
             }
-        )
+        }
+        
+        print(f"📡 Sending WebSocket message to group: {group_name}")
+        print(f"📨 Message data: {message_data}")
+        
+        async_to_sync(channel_layer.group_send)(group_name, message_data)
+        print(f"✅ WebSocket message sent successfully")
+    else:
+        print("❌ No channel layer available")
     
     return notification
+
+

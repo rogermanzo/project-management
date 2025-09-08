@@ -126,7 +126,19 @@ class TaskSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user:
             validated_data['created_by'] = request.user
+            # Solo administradores pueden asignar usuarios
+            if not request.user.is_admin() and 'assigned_to' in validated_data:
+                validated_data.pop('assigned_to', None)
         return super().create(validated_data)
+    
+    def update(self, instance, validated_data):
+        """Actualizar tarea con restricciones de asignación"""
+        request = self.context.get('request')
+        if request and request.user:
+            # Solo administradores pueden cambiar la asignación
+            if not request.user.is_admin() and 'assigned_to' in validated_data:
+                validated_data.pop('assigned_to', None)
+        return super().update(instance, validated_data)
 
 
 class TaskStatusUpdateSerializer(serializers.ModelSerializer):

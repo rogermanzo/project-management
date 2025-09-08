@@ -2,6 +2,7 @@ import React, { ReactNode, useState } from 'react';
 import { Box, AppBar, Toolbar, IconButton, Typography } from '@mui/material';
 import { Menu as MenuIcon } from '@mui/icons-material';
 import Sidebar from './Sidebar';
+import NotificationBell from '../Notifications/NotificationBell';
 
 interface LayoutProps {
   children: ReactNode;
@@ -51,9 +52,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             >
               <MenuIcon />
             </IconButton>
-            <Typography variant="h6" noWrap component="div">
+            <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
               Gestión de Proyectos
             </Typography>
+            <NotificationBell />
           </Toolbar>
         </AppBar>
 

@@ -90,14 +90,6 @@ const Tasks: React.FC = () => {
     fetchUsersAndProjects();
   }, []);
 
-  // Actualizar tareas automáticamente cada 30 segundos
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchTasks();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   const fetchUsersAndProjects = async () => {
     try {
@@ -226,8 +218,8 @@ const Tasks: React.FC = () => {
       return;
     }
     
-    // Validar que se haya asignado un usuario
-    if (!formData.assigned_to) {
+    // Validar que se haya asignado un usuario solo si es admin
+    if (user?.role === 'admin' && !formData.assigned_to) {
       setError('Debe asignar la tarea a un usuario');
       return;
     }
@@ -239,7 +231,7 @@ const Tasks: React.FC = () => {
         status: formData.status,
         priority: formData.priority,
         project: Number(formData.project),
-        assigned_to: Number(formData.assigned_to),
+        assigned_to: formData.assigned_to ? Number(formData.assigned_to) : undefined,
         due_date: formData.due_date ? new Date(formData.due_date).toISOString() : undefined,
       };
 
@@ -271,7 +263,15 @@ const Tasks: React.FC = () => {
   const handleStatusChange = async (task: Task, newStatus: string) => {
     try {
       await taskService.updateTaskStatus(task.id, newStatus);
-      await fetchTasks();
+      
+      // Actualizar solo la tarea específica en lugar de recargar toda la lista
+      setTasks(prevTasks => 
+        prevTasks.map(t => 
+          t.id === task.id 
+            ? { ...t, status: newStatus as Task['status'], status_display: getStatusDisplay(newStatus) }
+            : t
+        )
+      );
     } catch (error: any) {
       setError('Error al actualizar el estado de la tarea');
       console.error('Error:', error);
@@ -343,6 +343,21 @@ const Tasks: React.FC = () => {
         return 'error';
       default:
         return 'default';
+    }
+  };
+
+  const getStatusDisplay = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'Completado';
+      case 'in_progress':
+        return 'En Progreso';
+      case 'pending':
+        return 'Pendiente';
+      case 'cancelled':
+        return 'Cancelado';
+      default:
+        return status;
     }
   };
 
@@ -447,91 +462,87 @@ const Tasks: React.FC = () => {
                   <ListItemIcon>
                     <Assignment />
                   </ListItemIcon>
-                  <ListItemText
-                    primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="subtitle1">
-                          {task.title}
-                        </Typography>
-                        {task.due_date && isOverdue(task.due_date) && (
-                          <Chip
-                            label="Vencida"
-                            size="small"
-                            color="error"
-                            variant="outlined"
-                          />
-                        )}
-                      </Box>
-                    }
-                    secondary={
-                      <Box>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                          {task.description}
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-                          {/* Estado */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                              Estado:
-                            </Typography>
-                            {(user?.can_edit_projects || task.assigned_to === user?.id) ? (
-                              <FormControl size="small" sx={{ minWidth: 100 }}>
-                                <Select
-                                  value={task.status}
-                                  onChange={(e) => {
-                                    e.stopPropagation();
-                                    handleStatusChange(task, e.target.value);
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  sx={{ 
-                                    '& .MuiSelect-select': { 
-                                      py: 0.5,
-                                      fontSize: '0.75rem',
-                                      color: getStatusColor(task.status) === 'success' ? 'success.main' :
-                                             getStatusColor(task.status) === 'warning' ? 'warning.main' :
-                                             getStatusColor(task.status) === 'info' ? 'info.main' :
-                                             getStatusColor(task.status) === 'error' ? 'error.main' : 'text.primary'
-                                    }
-                                  }}
-                                >
-                                  <MenuItem value="pending">Pendiente</MenuItem>
-                                  <MenuItem value="in_progress">En Progreso</MenuItem>
-                                  <MenuItem value="completed">Completado</MenuItem>
-                                  <MenuItem value="cancelled">Cancelado</MenuItem>
-                                </Select>
-                              </FormControl>
-                            ) : (
-                              /* Mostrar solo el estado como texto si no puede editar */
-                              <Chip
-                                label={task.status_display}
-                                size="small"
-                                color={getStatusColor(task.status) as any}
-                                variant="outlined"
-                              />
-                            )}
-                          </Box>
-                          
-                          {/* Prioridad */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                              Prioridad:
-                            </Typography>
+                  <Box sx={{ flex: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <Typography variant="subtitle1">
+                        {task.title}
+                      </Typography>
+                      {task.due_date && isOverdue(task.due_date) && (
+                        <Chip
+                          label="Vencida"
+                          size="small"
+                          color="error"
+                          variant="outlined"
+                        />
+                      )}
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        {task.description}
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                        {/* Estado */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                            Estado:
+                          </Typography>
+                          {(user?.can_edit_projects || task.assigned_to === user?.id) ? (
+                            <FormControl size="small" sx={{ minWidth: 100 }}>
+                              <Select
+                                value={task.status}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  handleStatusChange(task, e.target.value);
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                sx={{ 
+                                  '& .MuiSelect-select': { 
+                                    py: 0.5,
+                                    fontSize: '0.75rem',
+                                    color: getStatusColor(task.status) === 'success' ? 'success.main' :
+                                           getStatusColor(task.status) === 'warning' ? 'warning.main' :
+                                           getStatusColor(task.status) === 'info' ? 'info.main' :
+                                           getStatusColor(task.status) === 'error' ? 'error.main' : 'text.primary'
+                                  }
+                                }}
+                              >
+                                <MenuItem value="pending">Pendiente</MenuItem>
+                                <MenuItem value="in_progress">En Progreso</MenuItem>
+                                <MenuItem value="completed">Completado</MenuItem>
+                                <MenuItem value="cancelled">Cancelado</MenuItem>
+                              </Select>
+                            </FormControl>
+                          ) : (
+                            /* Mostrar solo el estado como texto si no puede editar */
                             <Chip
-                              label={task.priority_display}
+                              label={task.status_display}
                               size="small"
-                              color={getPriorityColor(task.priority) as any}
+                              color={getStatusColor(task.status) as any}
                               variant="outlined"
                             />
-                          </Box>
+                          )}
                         </Box>
-                        <Typography variant="caption" color="text.secondary">
-                          Proyecto: {task.project_name} • 
-                          {task.due_date && ` Vence: ${new Date(task.due_date).toLocaleDateString()}`}
-                          {task.assigned_to_name && ` • Asignado a: ${task.assigned_to_name}`}
-                        </Typography>
+                        
+                        {/* Prioridad */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                            Prioridad:
+                          </Typography>
+                          <Chip
+                            label={task.priority_display}
+                            size="small"
+                            color={getPriorityColor(task.priority) as any}
+                            variant="outlined"
+                          />
+                        </Box>
                       </Box>
-                    }
-                  />
+                      <Typography variant="caption" color="text.secondary">
+                        Proyecto: {task.project_name} • 
+                        {task.due_date && ` Vence: ${new Date(task.due_date).toLocaleDateString()}`}
+                        {task.assigned_to_name && ` • Asignado a: ${task.assigned_to_name}`}
+                      </Typography>
+                    </Box>
+                  </Box>
                   {(user?.can_edit_projects || task.assigned_to === user?.id) && (
                     <Box sx={{ display: 'flex', gap: 1 }}>
                       <IconButton
@@ -635,24 +646,26 @@ const Tasks: React.FC = () => {
                     ))}
                   </Select>
                 </FormControl>
-                <FormControl fullWidth required>
-                  <InputLabel>Asignado a</InputLabel>
-                  <Select
-                    value={formData.assigned_to}
-                    label="Asignado a"
-                    onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
-                    required
-                  >
-                    <MenuItem value="" disabled>
-                      <em>Seleccione un usuario</em>
-                    </MenuItem>
-                    {getAvailableUsers().map((user) => (
-                      <MenuItem key={user.id} value={user.id.toString()}>
-                        {user.full_name}
+                {user?.role === 'admin' && (
+                  <FormControl fullWidth required>
+                    <InputLabel>Asignado a</InputLabel>
+                    <Select
+                      value={formData.assigned_to}
+                      label="Asignado a"
+                      onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
+                      required
+                    >
+                      <MenuItem value="" disabled>
+                        <em>Seleccione un usuario</em>
                       </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                      {getAvailableUsers().map((user) => (
+                        <MenuItem key={user.id} value={user.id.toString()}>
+                          {user.full_name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
               </Box>
               <TextField
                 fullWidth

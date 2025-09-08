@@ -8,18 +8,26 @@ from accounts.models import User
 
 class NotificationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        print(f"🔌 WebSocket connection attempt")
+        
         # Obtener el token de la query string
         token = self.scope['query_string'].decode().split('token=')[1] if 'token=' in self.scope['query_string'].decode() else None
         
+        print(f"🔑 Token received: {token[:20]}..." if token else "❌ No token provided")
+        
         if not token:
+            print("❌ No token provided, closing connection")
             await self.close()
             return
         
         # Verificar el token y obtener el usuario
         user = await self.get_user_from_token(token)
         if not user or isinstance(user, AnonymousUser):
+            print(f"❌ Invalid token or user not found")
             await self.close()
             return
+        
+        print(f"✅ User authenticated: {user.id} ({user.username})")
         
         # Agregar el usuario al scope
         self.scope['user'] = user
@@ -27,11 +35,14 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         
         # Unirse al grupo de notificaciones del usuario
         self.group_name = f'notifications_{user.id}'
+        print(f"👥 Joining group: {self.group_name}")
+        
         await self.channel_layer.group_add(
             self.group_name,
             self.channel_name
         )
         
+        print(f"✅ WebSocket connection accepted for user {user.id}")
         await self.accept()
     
     async def disconnect(self, close_code):
@@ -51,11 +62,13 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             await self.mark_notification_as_read(notification_id)
     
     async def notification_message(self, event):
+        print(f"📨 Sending notification to WebSocket: {event['notification']['title']}")
         # Enviar notificación al WebSocket
         await self.send(text_data=json.dumps({
             'type': 'notification',
             'notification': event['notification']
         }))
+        print(f"✅ Notification sent to WebSocket successfully")
     
     @database_sync_to_async
     def get_user_from_token(self, token):

@@ -55,14 +55,6 @@ const Projects: React.FC = () => {
     fetchUsers();
   }, []);
 
-  // Actualizar proyectos automáticamente cada 30 segundos
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchProjects();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   const fetchProjects = async () => {
     try {

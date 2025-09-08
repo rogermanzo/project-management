@@ -66,11 +66,6 @@ const Dashboard: React.FC = () => {
     };
 
     fetchDashboardData();
-
-    // Actualizar datos cada 30 segundos
-    const interval = setInterval(fetchDashboardData, 30000);
-
-    return () => clearInterval(interval);
   }, []);
 
   const getStatusColor = (status: string) => {
