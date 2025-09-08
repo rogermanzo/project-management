@@ -86,36 +86,40 @@ def send_notification(user, notification_type, title, message, project=None, tas
     print(f"✅ Notification created with ID: {notification.id}")
     
     # Enviar notificación en tiempo real via WebSocket
-    channel_layer = get_channel_layer()
-    if channel_layer:
-        group_name = f'notifications_{user.id}'
-        message_data = {
-            'type': 'notification_message',
-            'notification': {
-                'id': notification.id,
-                'type': notification.type,
-                'title': notification.title,
-                'message': notification.message,
-                'is_read': notification.is_read,
-                'created_at': notification.created_at.isoformat(),
-                'project': {
-                    'id': project.id,
-                    'name': project.name
-                } if project else None,
-                'task': {
-                    'id': task.id,
-                    'title': task.title
-                } if task else None,
+    try:
+        channel_layer = get_channel_layer()
+        if channel_layer:
+            group_name = f'notifications_{user.id}'
+            message_data = {
+                'type': 'notification_message',
+                'notification': {
+                    'id': notification.id,
+                    'type': notification.type,
+                    'title': notification.title,
+                    'message': notification.message,
+                    'is_read': notification.is_read,
+                    'created_at': notification.created_at.isoformat(),
+                    'project': {
+                        'id': project.id,
+                        'name': project.name
+                    } if project else None,
+                    'task': {
+                        'id': task.id,
+                        'title': task.title
+                    } if task else None,
+                }
             }
-        }
-        
-        print(f"📡 Sending WebSocket message to group: {group_name}")
-        print(f"📨 Message data: {message_data}")
-        
-        async_to_sync(channel_layer.group_send)(group_name, message_data)
-        print(f"✅ WebSocket message sent successfully")
-    else:
-        print("❌ No channel layer available")
+            
+            print(f"📡 Sending WebSocket message to group: {group_name}")
+            print(f"📨 Message data: {message_data}")
+            
+            async_to_sync(channel_layer.group_send)(group_name, message_data)
+            print(f"✅ WebSocket message sent successfully")
+        else:
+            print("❌ No channel layer available")
+    except Exception as e:
+        print(f"⚠️ WebSocket notification failed (continuing anyway): {str(e)}")
+        # No lanzar la excepción, solo logear el error
     
     return notification
 
