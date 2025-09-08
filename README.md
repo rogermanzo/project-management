@@ -5,7 +5,7 @@ Aplicación web full-stack para gestión de proyectos y tareas con notificacione
 ## 🚀 Demo
 
 - **Frontend**: [https://gestion-proyecto-frontend.onrender.com](https://gestion-proyecto-frontend.onrender.com)
-- **Backend**: [https://gestion-proyecto-backend.onrender.com](https://gestion-proyecto-backend.onrender.com)
+- **Backend**: [https://project-management-c7wf.onrender.com](https://project-management-c7wf.onrender.com)
 
 ## ✨ Características
 

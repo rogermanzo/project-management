@@ -159,7 +159,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       }
 
       // Usar siempre la URL de producción
-      const wsUrl = `wss://gestion-proyecto-backend.onrender.com/ws/notifications/?token=${token}`;
+      const wsUrl = `wss://project-management-c7wf.onrender.com/ws/notifications/?token=${token}`;
       console.log('Connecting to WebSocket:', wsUrl);
       
       const websocket = new WebSocket(wsUrl);
