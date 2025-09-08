@@ -158,11 +158,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         ws.close();
       }
 
-      // Determinar la URL del WebSocket basada en el entorno
-      const isProduction = window.location.hostname !== 'localhost';
-      const wsProtocol = isProduction ? 'wss:' : 'ws:';
-      const wsHost = isProduction ? 'gestion-proyecto-backend.onrender.com' : 'localhost:8000';
-      const wsUrl = `${wsProtocol}//${wsHost}/ws/notifications/?token=${token}`;
+      // Usar siempre la URL de producción
+      const wsUrl = `wss://gestion-proyecto-backend.onrender.com/ws/notifications/?token=${token}`;
       console.log('Connecting to WebSocket:', wsUrl);
       
       const websocket = new WebSocket(wsUrl);
@@ -196,21 +193,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         setIsConnected(false);
         setWs(null);
         
-        // Solo intentar reconectar en desarrollo o si es un error de red
-        const isProduction = window.location.hostname !== 'localhost';
-        const shouldReconnect = !isProduction && event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts;
-        
-        if (shouldReconnect) {
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
-          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current + 1})`);
-          
-          reconnectTimeoutRef.current = setTimeout(() => {
-            reconnectAttempts.current++;
-            connectWebSocket();
-          }, delay);
-        } else if (isProduction) {
-          console.log('🔕 WebSocket disabled in production - notifications will work via polling');
-        }
+        // No reconectar automáticamente - usar polling
+        console.log('🔕 WebSocket disconnected - notifications will work via polling');
       };
 
       websocket.onerror = (error) => {
@@ -285,12 +269,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     };
   }, []);
 
-  // Polling para notificaciones en producción cuando WebSocket no esté disponible
+  // Polling para notificaciones cuando WebSocket no esté disponible
   useEffect(() => {
-    const isProduction = window.location.hostname !== 'localhost';
-    
-    if (isProduction && !isConnected) {
-      console.log('🔄 Starting notification polling in production');
+    if (!isConnected) {
+      console.log('🔄 Starting notification polling');
       const pollInterval = setInterval(() => {
         fetchNotifications();
         fetchUnreadCount();
