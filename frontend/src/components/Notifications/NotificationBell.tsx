@@ -20,7 +20,7 @@ import { useNotifications } from '../../contexts/NotificationContext';
 import { useAuth } from '../../contexts/AuthContext';
 
 const NotificationBell: React.FC = () => {
-  const { notifications, unreadCount, markAllAsRead, isConnected } = useNotifications();
+  const { notifications, unreadCount, markAllAsRead, isConnected, fetchUnreadCount } = useNotifications();
   const { user } = useAuth();
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
 
@@ -55,8 +55,21 @@ const NotificationBell: React.FC = () => {
     setAnchorEl(null);
   };
 
-  const handleNotificationClick = (notification: any) => {
+  const handleNotificationClick = async (notification: any) => {
     handleClose();
+    
+    // Marcar la notificación como leída si no lo está
+    if (!notification.is_read) {
+      try {
+        const { notificationService } = await import('../../services/api');
+        await notificationService.markAsRead(notification.id);
+        // Actualizar el conteo de no leídas
+        fetchUnreadCount();
+      } catch (error) {
+        console.error('Error marking notification as read:', error);
+      }
+    }
+    
     // Disparar auto-refresh de tareas al interactuar con una notificación
     try {
       window.dispatchEvent(new CustomEvent('tasks:refresh'));

@@ -109,7 +109,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     
     // Solo actualizar el contador si la notificación no está leída
     if (!notification.is_read) {
-      setUnreadCount(prev => prev + 1);
+      setUnreadCount(prev => {
+        const newCount = prev + 1;
+        console.log('📊 Updated unread count:', newCount);
+        return newCount;
+      });
     }
   };
 
@@ -122,6 +126,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         return currentNotifications.map(notification => ({ ...notification, is_read: true }));
       });
       setUnreadCount(0);
+      console.log('✅ All notifications marked as read');
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
     }
@@ -259,6 +264,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   useEffect(() => {
     const handleNotificationRefresh = () => {
       console.log('🔄 Refreshing notifications due to task creation/update');
+      // Actualizar notificaciones y conteo
       fetchNotifications();
       fetchUnreadCount();
     };

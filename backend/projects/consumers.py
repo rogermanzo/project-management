@@ -63,12 +63,15 @@ class NotificationConsumer(AsyncWebsocketConsumer):
     
     async def notification_message(self, event):
         print(f"📨 Sending notification to WebSocket: {event['notification']['title']}")
-        # Enviar notificación al WebSocket
-        await self.send(text_data=json.dumps({
-            'type': 'notification',
-            'notification': event['notification']
-        }))
-        print(f"✅ Notification sent to WebSocket successfully")
+        try:
+            # Enviar notificación al WebSocket
+            await self.send(text_data=json.dumps({
+                'type': 'notification',
+                'notification': event['notification']
+            }))
+            print(f"✅ Notification sent to WebSocket successfully")
+        except Exception as e:
+            print(f"❌ Error sending notification to WebSocket: {str(e)}")
     
     @database_sync_to_async
     def get_user_from_token(self, token):
