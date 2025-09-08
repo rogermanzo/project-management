@@ -158,7 +158,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         ws.close();
       }
 
-      const wsUrl = `ws://localhost:8000/ws/notifications/?token=${token}`;
+      // Determinar la URL del WebSocket basada en el entorno
+      const isProduction = window.location.hostname !== 'localhost';
+      const wsProtocol = isProduction ? 'wss:' : 'ws:';
+      const wsHost = isProduction ? 'gestion-proyecto-backend.onrender.com' : 'localhost:8000';
+      const wsUrl = `${wsProtocol}//${wsHost}/ws/notifications/?token=${token}`;
       console.log('Connecting to WebSocket:', wsUrl);
       
       const websocket = new WebSocket(wsUrl);
@@ -192,8 +196,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         setIsConnected(false);
         setWs(null);
         
-        // Attempt to reconnect if not a manual close
-        if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
+        // Solo intentar reconectar en desarrollo o si es un error de red
+        const isProduction = window.location.hostname !== 'localhost';
+        const shouldReconnect = !isProduction && event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts;
+        
+        if (shouldReconnect) {
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
           console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current + 1})`);
           
@@ -201,6 +208,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
             reconnectAttempts.current++;
             connectWebSocket();
           }, delay);
+        } else if (isProduction) {
+          console.log('🔕 WebSocket disabled in production - notifications will work via polling');
         }
       };
 
@@ -275,6 +284,24 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       window.removeEventListener('notifications:refresh', handleNotificationRefresh);
     };
   }, []);
+
+  // Polling para notificaciones en producción cuando WebSocket no esté disponible
+  useEffect(() => {
+    const isProduction = window.location.hostname !== 'localhost';
+    
+    if (isProduction && !isConnected) {
+      console.log('🔄 Starting notification polling in production');
+      const pollInterval = setInterval(() => {
+        fetchNotifications();
+        fetchUnreadCount();
+      }, 30000); // Poll cada 30 segundos
+      
+      return () => {
+        clearInterval(pollInterval);
+        console.log('🛑 Stopped notification polling');
+      };
+    }
+  }, [isConnected]);
 
   const value: NotificationContextType = {
     notifications,
