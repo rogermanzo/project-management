@@ -55,17 +55,21 @@ const Projects: React.FC = () => {
     fetchUsers();
   }, []);
 
-
   const fetchProjects = async () => {
     try {
-      setIsLoading(true);
+      // Si el modal está abierto, no activar loading de pantalla completa para evitar cerrar el modal
+      if (!openDialog) {
+        setIsLoading(true);
+      }
       const data = await projectService.getProjects();
       setProjects(data);
     } catch (error: any) {
       setError('Error al cargar los proyectos');
       console.error('Error:', error);
     } finally {
-      setIsLoading(false);
+      if (!openDialog) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -78,44 +82,67 @@ const Projects: React.FC = () => {
     }
   };
 
+  const toYMD = (value?: string | null) => {
+    if (!value) return '';
+    try {
+      // Si ya viene como yyyy-MM-dd, devolver tal cual
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+      const d = new Date(value);
+      if (isNaN(d.getTime())) return '';
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    } catch {
+      return '';
+    }
+  };
+
   const handleOpenDialog = async (project?: Project) => {
+    console.log('Projects: handleOpenDialog called', { projectId: project?.id });
     if (project) {
+      // 1) Setear estado y abrir el modal inmediatamente
       setEditingProject(project);
       setFormData({
         name: project.name,
         description: project.description,
         status: project.status,
         priority: project.priority,
-        start_date: project.start_date,
-        end_date: project.end_date || '',
+        start_date: toYMD(project.start_date),
+        end_date: toYMD(project.end_date) || '',
       });
-      
-      // Cargar miembros del proyecto si es administrador
+      setOpenDialog(true);
+      console.log('Projects: modal opened for edit');
+
+      // 2) Cargar miembros en segundo plano (no bloquear la apertura del modal)
       if (user?.role === 'admin') {
-        try {
-          const members = await projectService.getProjectMembers(project.id);
-          console.log('Miembros cargados:', members);
-          const userIds = members.map((member: any) => member.user);
-          console.log('User IDs extraídos:', userIds);
-          setAssignedUsers(userIds);
-        } catch (error) {
-          console.error('Error al cargar miembros del proyecto:', error);
-          setAssignedUsers([]);
-        }
+        (async () => {
+          try {
+            const members = await projectService.getProjectMembers(project.id);
+            const userIds = members.map((member: any) => member.user);
+            setAssignedUsers(userIds);
+          } catch (error) {
+            console.error('Error al cargar miembros del proyecto:', error);
+            setAssignedUsers([]);
+          }
+        })();
       }
-    } else {
-      setEditingProject(null);
-      setFormData({
-        name: '',
-        description: '',
-        status: 'pending' as 'pending' | 'in_progress' | 'completed' | 'cancelled',
-        priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
-        start_date: '',
-        end_date: '',
-      });
-      setAssignedUsers([]);
+      return;
     }
+
+    // Nuevo proyecto
+    setEditingProject(null);
+    setFormData({
+      name: '',
+      description: '',
+      status: 'pending' as 'pending' | 'in_progress' | 'completed' | 'cancelled',
+      priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
+      start_date: '',
+      end_date: '',
+    });
+    setAssignedUsers([]);
     setOpenDialog(true);
+    console.log('Projects: modal opened for create');
   };
 
   const handleCloseDialog = () => {
@@ -230,7 +257,7 @@ const Projects: React.FC = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !openDialog) {
     return <Loading message="Cargando proyectos..." />;
   }
 
@@ -300,14 +327,14 @@ const Projects: React.FC = () => {
                   </Box>
                   <Box sx={{ display: 'flex', gap: 1 }}>
                     <IconButton
-                      onClick={() => navigate(`/projects/${project.id}`)}
+                      onClick={(e) => { e.stopPropagation(); navigate(`/projects/${project.id}`); }}
                       color="primary"
                     >
                       <Visibility />
                     </IconButton>
                     {project.can_user_edit && (
                       <IconButton
-                        onClick={() => handleOpenDialog(project)}
+                        onClick={(e) => { e.stopPropagation(); handleOpenDialog(project); }}
                         color="primary"
                       >
                         <Edit />
@@ -315,7 +342,7 @@ const Projects: React.FC = () => {
                     )}
                     {project.can_user_delete && (
                       <IconButton
-                        onClick={() => handleDelete(project)}
+                        onClick={(e) => { e.stopPropagation(); handleDelete(project); }}
                         color="error"
                       >
                         <Delete />
@@ -330,7 +357,16 @@ const Projects: React.FC = () => {
       )}
 
       {/* Dialog para crear/editar proyecto */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
+      <Dialog
+        open={openDialog}
+        onClose={(event, reason) => {
+          if (reason === 'backdropClick' || reason === 'escapeKeyDown') return;
+          handleCloseDialog();
+        }}
+        maxWidth="md"
+        fullWidth
+        keepMounted
+      >
         <DialogTitle>
           {editingProject ? 'Editar Proyecto' : 'Nuevo Proyecto'}
         </DialogTitle>

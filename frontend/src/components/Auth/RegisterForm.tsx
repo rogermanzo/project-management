@@ -7,17 +7,20 @@ import {
   Button,
   Typography,
   Alert,
-  Link,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
+  IconButton,
 } from '@mui/material';
+import { Brightness4, Brightness7 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { RegisterData } from '../../types';
 
 const RegisterForm: React.FC = () => {
+  const { mode, toggleTheme } = useTheme();
   const { register, error, clearError, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState<RegisterData>({
@@ -86,11 +89,24 @@ const RegisterForm: React.FC = () => {
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        backgroundColor: 'background.default',
+        position: 'relative', // Para posicionar el botón de tema
         py: 4,
       }}
     >
-      <Card sx={{ maxWidth: 600, width: '100%', mx: 2 }}>
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 16,
+          right: 16,
+        }}
+      >
+        <IconButton sx={{ ml: 1 }} onClick={toggleTheme} color="inherit">
+          {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
+        </IconButton>
+      </Box>
+
+      <Card sx={{ maxWidth: 600, width: '100%', mx: 2, boxShadow: 3, borderRadius: 2 }}>
         <CardContent sx={{ p: 4 }}>
           <Typography variant="h4" component="h1" gutterBottom align="center">
             Crear Cuenta

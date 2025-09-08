@@ -73,8 +73,17 @@ const ProjectDetail: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   const [openTaskDialog, setOpenTaskDialog] = useState(false);
   const [openMemberDialog, setOpenMemberDialog] = useState(false);
+  const [openProjectDialog, setOpenProjectDialog] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<number | ''>('');
+  const [projectForm, setProjectForm] = useState({
+    name: '',
+    description: '',
+    status: 'pending' as 'pending' | 'in_progress' | 'completed' | 'cancelled',
+    priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
+    start_date: '',
+    end_date: '',
+  });
   const [taskFormData, setTaskFormData] = useState({
     title: '',
     description: '',
@@ -91,7 +100,7 @@ const ProjectDetail: React.FC = () => {
     }
   }, [id]);
 
-  // Actualizar datos del proyecto automáticamente cada 30 segundos
+  // Nota: Se eliminó el auto-refresh periódico para evitar recargas/actualizaciones automáticas
 
   const fetchUsers = async () => {
     try {
@@ -99,6 +108,51 @@ const ProjectDetail: React.FC = () => {
       setUsers(usersData);
     } catch (error) {
       console.error('Error al cargar usuarios:', error);
+    }
+  };
+
+  const toYMD = (value?: string | null) => {
+    if (!value) return '';
+    try {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+      const d = new Date(value);
+      if (isNaN(d.getTime())) return '';
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    } catch {
+      return '';
+    }
+  };
+
+  const handleOpenProjectDialog = () => {
+    if (!project) return;
+    setProjectForm({
+      name: project.name,
+      description: project.description,
+      status: project.status,
+      priority: project.priority,
+      start_date: toYMD(project.start_date),
+      end_date: toYMD(project.end_date),
+    });
+    setOpenProjectDialog(true);
+  };
+
+  const handleCloseProjectDialog = () => {
+    setOpenProjectDialog(false);
+  };
+
+  const handleProjectSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!project) return;
+    try {
+      await projectService.updateProject(project.id, projectForm);
+      await fetchProjectData();
+      setOpenProjectDialog(false);
+    } catch (error: any) {
+      setError('Error al actualizar el proyecto');
+      console.error('Error:', error);
     }
   };
 
@@ -162,8 +216,8 @@ const ProjectDetail: React.FC = () => {
   const handleTaskSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validar que se haya asignado un usuario solo si es admin
-    if (user?.role === 'admin' && !taskFormData.assigned_to) {
+    // Validar que se haya asignado un usuario
+    if (!taskFormData.assigned_to) {
       setError('Debe asignar la tarea a un usuario');
       return;
     }
@@ -174,7 +228,7 @@ const ProjectDetail: React.FC = () => {
         description: taskFormData.description,
         status: taskFormData.status,
         priority: taskFormData.priority,
-        assigned_to: taskFormData.assigned_to ? Number(taskFormData.assigned_to) : undefined,
+        assigned_to: Number(taskFormData.assigned_to),
         due_date: taskFormData.due_date ? new Date(taskFormData.due_date).toISOString() : undefined,
       };
 
@@ -182,6 +236,14 @@ const ProjectDetail: React.FC = () => {
         await taskService.updateTask(editingTask.id, taskData);
       } else {
         await taskService.createTask(taskData, Number(id));
+      }
+
+      // Asegurar que el usuario asignado sea miembro del proyecto
+      try {
+        await projectService.addProjectMember(Number(id), Number(taskFormData.assigned_to));
+      } catch (e) {
+        // Si ya es miembro u ocurre un error no crítico, lo ignoramos
+        console.warn('No se pudo agregar miembro (posiblemente ya es miembro):', e);
       }
       await fetchProjectData();
       handleCloseTaskDialog();
@@ -315,7 +377,7 @@ const ProjectDetail: React.FC = () => {
             <Button
               variant="contained"
               startIcon={<Edit />}
-              onClick={() => navigate(`/projects/${project.id}/edit`)}
+              onClick={handleOpenProjectDialog}
             >
               Editar Proyecto
             </Button>
@@ -329,7 +391,7 @@ const ProjectDetail: React.FC = () => {
         </Alert>
       )}
 
-      <Card>
+      <Card sx={{ borderRadius: 2, boxShadow: 2 }}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
             <Tab label="Resumen" />
@@ -339,10 +401,10 @@ const ProjectDetail: React.FC = () => {
         </Box>
 
         <TabPanel value={tabValue} index={0}>
-          <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-            <Card sx={{ flex: '1 1 200px' }}>
+          <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', borderRadius: 2 }}>
+            <Card sx={{ flex: '1 1 200px', borderRadius: 2, boxShadow: 3 }}>
               <CardContent>
-                <Box display="flex" alignItems="center">
+                <Box display="flex" alignItems="center ">
                   <Assignment color="primary" sx={{ mr: 2 }} />
                   <Box>
                     <Typography variant="h4">{tasks.length}</Typography>
@@ -352,7 +414,7 @@ const ProjectDetail: React.FC = () => {
               </CardContent>
             </Card>
 
-            <Card sx={{ flex: '1 1 200px' }}>
+            <Card sx={{ flex: '1 1 200px', borderRadius: 2, boxShadow: 3 }}>
               <CardContent>
                 <Box display="flex" alignItems="center">
                   <CheckCircle color="success" sx={{ mr: 2 }} />
@@ -366,7 +428,7 @@ const ProjectDetail: React.FC = () => {
               </CardContent>
             </Card>
 
-            <Card sx={{ flex: '1 1 200px' }}>
+            <Card sx={{ flex: '1 1 200px', borderRadius: 2, boxShadow: 3 }}>
               <CardContent>
                 <Box display="flex" alignItems="center">
                   <Schedule color="warning" sx={{ mr: 2 }} />
@@ -380,7 +442,7 @@ const ProjectDetail: React.FC = () => {
               </CardContent>
             </Card>
 
-            <Card sx={{ flex: '1 1 200px' }}>
+            <Card sx={{ flex: '1 1 200px', borderRadius: 2, boxShadow: 3 }}>
               <CardContent>
                 <Box display="flex" alignItems="center">
                   <TrendingUp color="info" sx={{ mr: 2 }} />
@@ -575,26 +637,24 @@ const ProjectDetail: React.FC = () => {
                   </Select>
                 </FormControl>
               </Box>
-              {user?.role === 'admin' && (
-                <FormControl fullWidth required>
-                  <InputLabel>Asignado a</InputLabel>
-                  <Select
-                    value={taskFormData.assigned_to}
-                    label="Asignado a"
-                    onChange={(e) => setTaskFormData({ ...taskFormData, assigned_to: e.target.value })}
-                    required
-                  >
-                    <MenuItem value="" disabled>
-                      <em>Seleccione un usuario</em>
+              <FormControl fullWidth required>
+                <InputLabel>Asignado a</InputLabel>
+                <Select
+                  value={taskFormData.assigned_to}
+                  label="Asignado a"
+                  onChange={(e) => setTaskFormData({ ...taskFormData, assigned_to: e.target.value })}
+                  required
+                >
+                  <MenuItem value="" disabled>
+                    <em>Seleccione un usuario</em>
+                  </MenuItem>
+                  {users.map((user) => (
+                    <MenuItem key={user.id} value={user.id.toString()}>
+                      {user.full_name}
                     </MenuItem>
-                    {users.map((user) => (
-                      <MenuItem key={user.id} value={user.id.toString()}>
-                        {user.full_name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
+                  ))}
+                </Select>
+              </FormControl>
               <TextField
                 fullWidth
                 label="Fecha Límite"
@@ -613,6 +673,92 @@ const ProjectDetail: React.FC = () => {
           </DialogActions>
         </form>
       </Dialog>
+
+  {/* Dialog para editar proyecto */}
+  <Dialog
+    open={openProjectDialog}
+    onClose={(event, reason) => {
+      if (reason === 'backdropClick' || reason === 'escapeKeyDown') return;
+      handleCloseProjectDialog();
+    }}
+    maxWidth="md"
+    fullWidth
+    keepMounted
+  >
+    <DialogTitle>Editar Proyecto</DialogTitle>
+    <form onSubmit={handleProjectSubmit}>
+      <DialogContent>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          <TextField
+            fullWidth
+            label="Nombre del Proyecto"
+            value={projectForm.name}
+            onChange={(e) => setProjectForm({ ...projectForm, name: e.target.value })}
+            required
+          />
+          <TextField
+            fullWidth
+            label="Descripción"
+            multiline
+            rows={3}
+            value={projectForm.description}
+            onChange={(e) => setProjectForm({ ...projectForm, description: e.target.value })}
+          />
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel>Estado</InputLabel>
+              <Select
+                value={projectForm.status}
+                label="Estado"
+                onChange={(e) => setProjectForm({ ...projectForm, status: e.target.value as any })}
+              >
+                <MenuItem value="pending">Pendiente</MenuItem>
+                <MenuItem value="in_progress">En Progreso</MenuItem>
+                <MenuItem value="completed">Completado</MenuItem>
+                <MenuItem value="cancelled">Cancelado</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl fullWidth>
+              <InputLabel>Prioridad</InputLabel>
+              <Select
+                value={projectForm.priority}
+                label="Prioridad"
+                onChange={(e) => setProjectForm({ ...projectForm, priority: e.target.value as any })}
+              >
+                <MenuItem value="low">Baja</MenuItem>
+                <MenuItem value="medium">Media</MenuItem>
+                <MenuItem value="high">Alta</MenuItem>
+                <MenuItem value="urgent">Urgente</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <TextField
+              fullWidth
+              label="Fecha de Inicio"
+              type="date"
+              value={projectForm.start_date}
+              onChange={(e) => setProjectForm({ ...projectForm, start_date: e.target.value })}
+              InputLabelProps={{ shrink: true }}
+              required
+            />
+            <TextField
+              fullWidth
+              label="Fecha de Fin"
+              type="date"
+              value={projectForm.end_date}
+              onChange={(e) => setProjectForm({ ...projectForm, end_date: e.target.value })}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Box>
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleCloseProjectDialog}>Cancelar</Button>
+        <Button type="submit" variant="contained">Actualizar</Button>
+      </DialogActions>
+    </form>
+  </Dialog>
 
       {/* Dialog para agregar miembro */}
       <Dialog open={openMemberDialog} onClose={handleCloseMemberDialog} maxWidth="sm" fullWidth>

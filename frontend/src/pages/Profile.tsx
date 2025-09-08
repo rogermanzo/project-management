@@ -27,9 +27,12 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { authService } from '../services/api';
+import { useNavigate } from 'react-router-dom';
+import  ConfirmDialog  from '../components/Common/ConfirmDialog';
 
 const Profile: React.FC = () => {
   const { user, updateUser, logout } = useAuth();
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +48,7 @@ const Profile: React.FC = () => {
     new_password: '',
     new_password_confirm: '',
   });
+  const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -146,7 +150,7 @@ const Profile: React.FC = () => {
 
       <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
         {/* Información del perfil */}
-        <Card sx={{ flex: '1 1 400px', minWidth: '400px' }}>
+        <Card sx={{ flex: '1 1 400px', minWidth: '400px', borderRadius: 2 }}>
           <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
               <Typography variant="h6">Información Personal</Typography>
@@ -246,7 +250,7 @@ const Profile: React.FC = () => {
         </Card>
 
         {/* Información de la cuenta */}
-        <Card sx={{ flex: '1 1 300px', minWidth: '300px' }}>
+        <Card sx={{ flex: '1 1 300px', minWidth: '300px', borderRadius: 2 }}>
           <CardContent>
             <Typography variant="h6" gutterBottom>
               Información de la Cuenta
@@ -309,17 +313,7 @@ const Profile: React.FC = () => {
               <Button
                 variant="outlined"
                 color="error"
-                onClick={async () => {
-                  if (window.confirm('¿Estás seguro de que quieres cerrar sesión?')) {
-                    try {
-                      await logout();
-                      window.location.href = '/login';
-                    } catch (error) {
-                      // Si falla el logout, redirigir de todas formas
-                      window.location.href = '/login';
-                    }
-                  }
-                }}
+                onClick={() => setConfirmLogoutOpen(true)}
                 fullWidth
               >
                 Cerrar Sesión
@@ -371,6 +365,25 @@ const Profile: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Confirmación de cierre de sesión */}
+      <ConfirmDialog
+        open={confirmLogoutOpen}
+        title="Cerrar sesión"
+        description="¿Seguro que quieres cerrar sesión? Tendrás que volver a iniciar sesión para continuar."
+        confirmText="Cerrar sesión"
+        cancelText="Cancelar"
+        confirmColor="error"
+        onClose={() => setConfirmLogoutOpen(false)}
+        onConfirm={async () => {
+          try {
+            await logout();
+          } finally {
+            setConfirmLogoutOpen(false);
+            navigate('/login', { replace: true });
+          }
+        }}
+      />
     </Box>
   );
 };

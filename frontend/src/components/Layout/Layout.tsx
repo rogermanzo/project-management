@@ -1,6 +1,7 @@
 import React, { ReactNode, useState } from 'react';
 import { Box, AppBar, Toolbar, IconButton, Typography } from '@mui/material';
-import { Menu as MenuIcon } from '@mui/icons-material';
+import { Menu as MenuIcon, Brightness4, Brightness7 } from '@mui/icons-material';
+import { useTheme } from '../../contexts/ThemeContext';
 import Sidebar from './Sidebar';
 import NotificationBell from '../Notifications/NotificationBell';
 
@@ -9,6 +10,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const { mode, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleSidebarToggle = () => {
@@ -55,7 +57,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
               Gestión de Proyectos
             </Typography>
+            {/* Notification bell visible in mobile top bar */}
             <NotificationBell />
+            <IconButton sx={{ ml: 1 }} onClick={toggleTheme} color="inherit">
+              {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
+            </IconButton>
           </Toolbar>
         </AppBar>
 

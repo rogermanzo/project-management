@@ -1,7 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
+import { CustomThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -14,25 +13,10 @@ import ProjectDetail from './pages/ProjectDetail';
 import Tasks from './pages/Tasks';
 import Profile from './pages/Profile';
 
-// Tema personalizado
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
-  },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-  },
-});
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <CustomThemeProvider>
       <AuthProvider>
         <NotificationProvider>
           <Router>
@@ -108,7 +92,7 @@ function App() {
         </Router>
         </NotificationProvider>
       </AuthProvider>
-    </ThemeProvider>
+    </CustomThemeProvider>
   );
 }
 

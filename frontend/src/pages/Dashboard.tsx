@@ -1,33 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  Chip,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Divider,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-} from '@mui/material';
-import {
-  Add,
-  Assignment,
-  CheckCircle,
-  Schedule,
-  TrendingUp,
-} from '@mui/icons-material';
+import { Box } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { projectService, taskService } from '../services/api';
 import { Project, Task } from '../types';
 import { PageHeader, Loading, ErrorAlert } from '../components/Common';
+import QuickStats from '../components/Dashboard/QuickStats';
+import RecentProjects from '../components/Dashboard/RecentProjects';
+import PendingTasks from '../components/Dashboard/PendingTasks';
+import TaskViewDialog from '../components/Dashboard/TaskViewDialog';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -66,6 +47,8 @@ const Dashboard: React.FC = () => {
     };
 
     fetchDashboardData();
+    // Nota: se eliminó el auto-refresh periódico para evitar recargas
+    return () => {};
   }, []);
 
   const getStatusColor = (status: string) => {
@@ -133,304 +116,33 @@ const Dashboard: React.FC = () => {
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         {/* Estadísticas rápidas */}
-        <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-          <Card sx={{ flex: '1 1 200px', minWidth: '200px' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center">
-                <Assignment color="primary" sx={{ mr: 2 }} />
-                <Box>
-                  <Typography variant="h4">{projects.length}</Typography>
-                  <Typography color="text.secondary">Proyectos</Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-
-          <Card sx={{ flex: '1 1 200px', minWidth: '200px' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center">
-                <CheckCircle color="success" sx={{ mr: 2 }} />
-                <Box>
-                  <Typography variant="h4">
-                    {allTasks.filter(task => task.status === 'completed').length}
-                  </Typography>
-                  <Typography color="text.secondary">Tareas Completadas</Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-
-          <Card sx={{ flex: '1 1 200px', minWidth: '200px' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center">
-                <Schedule color="warning" sx={{ mr: 2 }} />
-                <Box>
-                  <Typography variant="h4">
-                    {allTasks.filter(task => task.status !== 'completed' && task.status !== 'cancelled').length}
-                  </Typography>
-                  <Typography color="text.secondary">Tareas Pendientes</Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-
-          <Card sx={{ flex: '1 1 200px', minWidth: '200px' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center">
-                <TrendingUp color="info" sx={{ mr: 2 }} />
-                <Box>
-                  <Typography variant="h4">
-                    {Math.round(projects.reduce((acc, project) => acc + project.progress_percentage, 0) / projects.length) || 0}%
-                  </Typography>
-                  <Typography color="text.secondary">Progreso Promedio</Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Box>
+        <QuickStats projects={projects} allTasks={allTasks} />
 
         {/* Proyectos recientes y tareas pendientes */}
         <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-          <Card sx={{ flex: '1 1 400px', minWidth: '400px' }}>
-            <CardContent>
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="h6">Proyectos Recientes</Typography>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<Add />}
-                  onClick={() => navigate('/projects')}
-                >
-                  Ver Todos
-                </Button>
-              </Box>
-              
-              {projects.length === 0 ? (
-                <Typography color="text.secondary" align="center" py={2}>
-                  No tienes proyectos aún
-                </Typography>
-              ) : (
-                <List>
-                  {projects.map((project, index) => (
-                    <React.Fragment key={project.id}>
-                      <ListItem
-                        component="div"
-                        onClick={() => navigate(`/projects/${project.id}`)}
-                        sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
-                      >
-                        <ListItemIcon>
-                          <Assignment />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={project.name}
-                          secondary={
-                            <Typography component="div" variant="body2" color="text.secondary">
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Chip
-                                  label={project.status_display}
-                                  size="small"
-                                  color={getStatusColor(project.status) as any}
-                                />
-                                <Typography variant="caption" color="text.secondary">
-                                  {project.progress_percentage}% completado
-                                </Typography>
-                              </Box>
-                            </Typography>
-                          }
-                        />
-                      </ListItem>
-                      {index < projects.length - 1 && <Divider />}
-                    </React.Fragment>
-                  ))}
-                </List>
-              )}
-            </CardContent>
-          </Card>
-          <Card sx={{ flex: '1 1 400px', minWidth: '400px' }}>
-            <CardContent>
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="h6">Tareas Pendientes</Typography>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<Add />}
-                  onClick={() => navigate('/tasks')}
-                >
-                  Ver Todas
-                </Button>
-              </Box>
-              
-              {tasks.length === 0 ? (
-                <Typography color="text.secondary" align="center" py={2}>
-                  No tienes tareas asignadas
-                </Typography>
-              ) : (
-                <List>
-                  {tasks.slice(0, 5).map((task, index) => (
-                    <React.Fragment key={task.id}>
-                      <ListItem
-                        component="div"
-                        onClick={() => handleViewTask(task)}
-                        sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
-                      >
-                        <ListItemIcon>
-                          <Assignment />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={task.title}
-                          secondary={
-                            <Typography component="div" variant="body2" color="text.secondary">
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Chip
-                                  label={task.status_display}
-                                  size="small"
-                                  color={getTaskStatusColor(task.status) as any}
-                                />
-                                <Typography variant="caption" color="text.secondary">
-                                  {task.project_name}
-                                </Typography>
-                              </Box>
-                            </Typography>
-                          }
-                        />
-                      </ListItem>
-                      {index < Math.min(tasks.length, 5) - 1 && <Divider />}
-                    </React.Fragment>
-                  ))}
-                </List>
-              )}
-            </CardContent>
-          </Card>
+          <RecentProjects
+            projects={projects}
+            onViewAll={() => navigate('/projects')}
+            onProjectClick={(id) => navigate(`/projects/${id}`)}
+          />
+          <PendingTasks
+            tasks={tasks}
+            onViewAll={() => navigate('/tasks')}
+            onTaskClick={(task) => handleViewTask(task)}
+          />
         </Box>
       </Box>
 
       {/* Modal para visualizar tarea */}
-      <Dialog open={openViewDialog} onClose={handleCloseViewDialog} maxWidth="md" fullWidth>
-        <DialogTitle>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Assignment />
-            <Typography variant="h6">
-              {viewingTask?.title}
-            </Typography>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          {viewingTask && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 1 }}>
-              {/* Descripción */}
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  Descripción
-                </Typography>
-                <Typography variant="body1">
-                  {viewingTask.description || 'Sin descripción'}
-                </Typography>
-              </Box>
-
-              {/* Estado y Prioridad */}
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Estado
-                  </Typography>
-                  <Chip
-                    label={viewingTask.status_display}
-                    color={getTaskStatusColor(viewingTask.status) as any}
-                    variant="outlined"
-                  />
-                </Box>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Prioridad
-                  </Typography>
-                  <Chip
-                    label={viewingTask.priority_display}
-                    color="default"
-                    variant="outlined"
-                  />
-                </Box>
-              </Box>
-
-              {/* Información del Proyecto */}
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  Proyecto
-                </Typography>
-                <Typography variant="body1">
-                  {viewingTask.project_name}
-                </Typography>
-              </Box>
-
-              {/* Usuario Asignado */}
-              {viewingTask.assigned_to_name && (
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Asignado a
-                  </Typography>
-                  <Typography variant="body1">
-                    {viewingTask.assigned_to_name}
-                  </Typography>
-                </Box>
-              )}
-
-              {/* Fecha Límite */}
-              {viewingTask.due_date && (
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Fecha Límite
-                  </Typography>
-                  <Typography variant="body1">
-                    {new Date(viewingTask.due_date).toLocaleDateString()}
-                    {isOverdue(viewingTask.due_date) && (
-                      <Chip
-                        label="Vencida"
-                        size="small"
-                        color="error"
-                        variant="outlined"
-                        sx={{ ml: 1 }}
-                      />
-                    )}
-                  </Typography>
-                </Box>
-              )}
-
-              {/* Fechas de Creación y Actualización */}
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Creada
-                  </Typography>
-                  <Typography variant="body2">
-                    {new Date(viewingTask.created_at).toLocaleDateString()}
-                  </Typography>
-                </Box>
-                {viewingTask.updated_at && (
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      Actualizada
-                    </Typography>
-                    <Typography variant="body2">
-                      {new Date(viewingTask.updated_at).toLocaleDateString()}
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseViewDialog}>Cerrar</Button>
-          <Button
-            variant="contained"
-            onClick={() => {
-              handleCloseViewDialog();
-              navigate('/tasks');
-            }}
-          >
-            Ver en Tareas
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <TaskViewDialog
+        open={openViewDialog}
+        task={viewingTask}
+        onClose={handleCloseViewDialog}
+        onGoToTasks={() => {
+          handleCloseViewDialog();
+          navigate('/tasks');
+        }}
+      />
     </Box>
   );
 };

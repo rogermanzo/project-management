@@ -57,6 +57,17 @@ const NotificationBell: React.FC = () => {
 
   const handleNotificationClick = (notification: any) => {
     handleClose();
+    // Disparar auto-refresh de tareas al interactuar con una notificación
+    try {
+      window.dispatchEvent(new CustomEvent('tasks:refresh'));
+    } catch (e) {
+      // Fallback por si CustomEvent no está disponible en algún entorno
+      const evt = document.createEvent?.('Event');
+      if (evt?.initEvent) {
+        evt.initEvent('tasks:refresh', true, true);
+        window.dispatchEvent(evt);
+      }
+    }
   };
 
 

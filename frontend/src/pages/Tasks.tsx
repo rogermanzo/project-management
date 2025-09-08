@@ -36,6 +36,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { taskService, userService, projectService } from '../services/api';
 import { Task, User, Project, TaskComment } from '../types';
 import { PageHeader, Loading, ErrorAlert } from '../components/Common';
+import ConfirmDialog from '../components/Common/ConfirmDialog';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -75,6 +76,11 @@ const Tasks: React.FC = () => {
   const [newComment, setNewComment] = useState('');
   const [editingComment, setEditingComment] = useState<TaskComment | null>(null);
   const [editingCommentText, setEditingCommentText] = useState('');
+  // Modal de confirmación para eliminar tarea
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+  // Ordenamiento de la lista
+  const [sortOption, setSortOption] = useState<'recent' | 'old' | 'title_asc' | 'title_desc'>('recent');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -90,6 +96,24 @@ const Tasks: React.FC = () => {
     fetchUsersAndProjects();
   }, []);
 
+  // Re-cargar tareas cuando cambie el usuario (por ejemplo, al iniciar sesión)
+  useEffect(() => {
+    // Evitar llamadas innecesarias si aún no hay usuario cargado
+    if (user) {
+      fetchTasks();
+    }
+  }, [user]);
+
+  // Auto-refresh al hacer clic en una notificación
+  useEffect(() => {
+    const onRefresh = () => {
+      fetchTasks();
+    };
+    window.addEventListener('tasks:refresh', onRefresh as EventListener);
+    return () => {
+      window.removeEventListener('tasks:refresh', onRefresh as EventListener);
+    };
+  }, []);
 
   const fetchUsersAndProjects = async () => {
     try {
@@ -132,12 +156,34 @@ const Tasks: React.FC = () => {
     }
   };
 
+  const getSortedTasks = (list: Task[]) => {
+    const arr = [...list];
+    switch (sortOption) {
+      case 'recent':
+        return arr.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      case 'old':
+        return arr.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      case 'title_asc':
+        return arr.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      case 'title_desc':
+        return arr.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
+      default:
+        return arr;
+    }
+  };
+
   const fetchTasks = async () => {
     try {
       setIsLoading(true);
-      // Cargar todas las tareas sin filtro
-      const data = await taskService.getUserTasks();
-      setTasks(data.tasks);
+      // Si el usuario puede editar proyectos (e.g., admin), cargar TODAS las tareas
+      if (user?.can_edit_projects) {
+        const allTasks = await taskService.getTasks();
+        setTasks(allTasks);
+      } else {
+        // Caso contrario, cargar solo las tareas asignadas al usuario
+        const data = await taskService.getUserTasks();
+        setTasks(data.tasks);
+      }
     } catch (error: any) {
       setError('Error al cargar las tareas');
       console.error('Error:', error);
@@ -218,8 +264,8 @@ const Tasks: React.FC = () => {
       return;
     }
     
-    // Validar que se haya asignado un usuario solo si es admin
-    if (user?.role === 'admin' && !formData.assigned_to) {
+    // Validar que se haya asignado un usuario
+    if (!formData.assigned_to) {
       setError('Debe asignar la tarea a un usuario');
       return;
     }
@@ -231,7 +277,7 @@ const Tasks: React.FC = () => {
         status: formData.status,
         priority: formData.priority,
         project: Number(formData.project),
-        assigned_to: formData.assigned_to ? Number(formData.assigned_to) : undefined,
+        assigned_to: Number(formData.assigned_to),
         due_date: formData.due_date ? new Date(formData.due_date).toISOString() : undefined,
       };
 
@@ -239,6 +285,14 @@ const Tasks: React.FC = () => {
         await taskService.updateTask(editingTask.id, taskData);
       } else {
         await taskService.createTask(taskData);
+      }
+
+      // Asegurar que el usuario asignado sea miembro del proyecto para que vea la tarea en "Mis Tareas"
+      try {
+        await projectService.addProjectMember(Number(formData.project), Number(formData.assigned_to));
+      } catch (e) {
+        // Si ya es miembro u ocurre un error no crítico, lo ignoramos
+        console.warn('No se pudo agregar miembro (posiblemente ya es miembro):', e);
       }
       await fetchTasks();
       handleCloseDialog();
@@ -248,30 +302,29 @@ const Tasks: React.FC = () => {
     }
   };
 
-  const handleDelete = async (task: Task) => {
-    if (window.confirm(`¿Estás seguro de eliminar la tarea "${task.title}"?`)) {
-      try {
-        await taskService.deleteTask(task.id);
-        await fetchTasks();
-      } catch (error: any) {
-        setError('Error al eliminar la tarea');
-        console.error('Error:', error);
-      }
+  const handleDelete = (task: Task) => {
+    setTaskToDelete(task);
+    setOpenDeleteDialog(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!taskToDelete) return;
+    try {
+      await taskService.deleteTask(taskToDelete.id);
+      await fetchTasks();
+    } catch (error: any) {
+      setError('Error al eliminar la tarea');
+      console.error('Error:', error);
+    } finally {
+      setOpenDeleteDialog(false);
+      setTaskToDelete(null);
     }
   };
 
   const handleStatusChange = async (task: Task, newStatus: string) => {
     try {
       await taskService.updateTaskStatus(task.id, newStatus);
-      
-      // Actualizar solo la tarea específica en lugar de recargar toda la lista
-      setTasks(prevTasks => 
-        prevTasks.map(t => 
-          t.id === task.id 
-            ? { ...t, status: newStatus as Task['status'], status_display: getStatusDisplay(newStatus) }
-            : t
-        )
-      );
+      await fetchTasks();
     } catch (error: any) {
       setError('Error al actualizar el estado de la tarea');
       console.error('Error:', error);
@@ -346,21 +399,6 @@ const Tasks: React.FC = () => {
     }
   };
 
-  const getStatusDisplay = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'Completado';
-      case 'in_progress':
-        return 'En Progreso';
-      case 'pending':
-        return 'Pendiente';
-      case 'cancelled':
-        return 'Cancelado';
-      default:
-        return status;
-    }
-  };
-
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'urgent':
@@ -406,17 +444,33 @@ const Tasks: React.FC = () => {
       <Card>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
-            <Tab label="Todas" />
-            <Tab label="Pendientes" />
-            <Tab label="En Progreso" />
-            <Tab label="Completadas" />
+            <Tab label="Todas" sx={{ textTransform: 'none', fontWeight: 600 }} />
+            <Tab label="Pendientes" sx={{ textTransform: 'none', fontWeight: 600 }} />
+            <Tab label="En Progreso" sx={{ textTransform: 'none', fontWeight: 600 }} />
+            <Tab label="Completadas" sx={{ textTransform: 'none', fontWeight: 600 }} />
           </Tabs>
         </Box>
 
         <TabPanel value={tabValue} index={0}>
-          <Typography variant="h6" gutterBottom>
-            Todas las Tareas ({getFilteredTasks().length})
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="h6" gutterBottom>
+              Todas las Tareas ({getFilteredTasks().length})
+            </Typography>
+            <FormControl size="small" sx={{ minWidth: 170 }}>
+              <InputLabel id="sort-label">Ordenar por</InputLabel>
+              <Select
+                labelId="sort-label"
+                value={sortOption}
+                label="Ordenar por"
+                onChange={(e) => setSortOption(e.target.value as any)}
+              >
+                <MenuItem value="recent">Más recientes</MenuItem>
+                <MenuItem value="old">Más antiguas</MenuItem>
+                <MenuItem value="title_asc">Título A-Z</MenuItem>
+                <MenuItem value="title_desc">Título Z-A</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
@@ -452,7 +506,7 @@ const Tasks: React.FC = () => {
           </Box>
         ) : (
           <List>
-            {getFilteredTasks().map((task, index) => (
+            {getSortedTasks(getFilteredTasks()).map((task, index) => (
               <React.Fragment key={task.id}>
                 <ListItem
                   component="div"
@@ -462,87 +516,93 @@ const Tasks: React.FC = () => {
                   <ListItemIcon>
                     <Assignment />
                   </ListItemIcon>
-                  <Box sx={{ flex: 1 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                      <Typography variant="subtitle1">
-                        {task.title}
-                      </Typography>
-                      {task.due_date && isOverdue(task.due_date) && (
-                        <Chip
-                          label="Vencida"
-                          size="small"
-                          color="error"
-                          variant="outlined"
-                        />
-                      )}
-                    </Box>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                        {task.description}
-                      </Typography>
-                      <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-                        {/* Estado */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                            Estado:
-                          </Typography>
-                          {(user?.can_edit_projects || task.assigned_to === user?.id) ? (
-                            <FormControl size="small" sx={{ minWidth: 100 }}>
-                              <Select
-                                value={task.status}
-                                onChange={(e) => {
-                                  e.stopPropagation();
-                                  handleStatusChange(task, e.target.value);
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                                sx={{ 
-                                  '& .MuiSelect-select': { 
-                                    py: 0.5,
-                                    fontSize: '0.75rem',
-                                    color: getStatusColor(task.status) === 'success' ? 'success.main' :
-                                           getStatusColor(task.status) === 'warning' ? 'warning.main' :
-                                           getStatusColor(task.status) === 'info' ? 'info.main' :
-                                           getStatusColor(task.status) === 'error' ? 'error.main' : 'text.primary'
-                                  }
-                                }}
-                              >
-                                <MenuItem value="pending">Pendiente</MenuItem>
-                                <MenuItem value="in_progress">En Progreso</MenuItem>
-                                <MenuItem value="completed">Completado</MenuItem>
-                                <MenuItem value="cancelled">Cancelado</MenuItem>
-                              </Select>
-                            </FormControl>
-                          ) : (
-                            /* Mostrar solo el estado como texto si no puede editar */
-                            <Chip
-                              label={task.status_display}
-                              size="small"
-                              color={getStatusColor(task.status) as any}
-                              variant="outlined"
-                            />
-                          )}
-                        </Box>
-                        
-                        {/* Prioridad */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                            Prioridad:
-                          </Typography>
+                  <ListItemText
+                    primaryTypographyProps={{ component: 'div' }}
+                    secondaryTypographyProps={{ component: 'div' }}
+                    primary={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="subtitle1">
+                          {task.title}
+                        </Typography>
+                        {task.due_date && isOverdue(task.due_date) && (
                           <Chip
-                            label={task.priority_display}
+                            label="Vencida"
                             size="small"
-                            color={getPriorityColor(task.priority) as any}
+                            color="error"
                             variant="outlined"
                           />
-                        </Box>
+                        )}
                       </Box>
-                      <Typography variant="caption" color="text.secondary">
-                        Proyecto: {task.project_name} • 
-                        {task.due_date && ` Vence: ${new Date(task.due_date).toLocaleDateString()}`}
-                        {task.assigned_to_name && ` • Asignado a: ${task.assigned_to_name}`}
-                      </Typography>
-                    </Box>
-                  </Box>
+                    }
+                    secondary={
+                      <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1, borderRadius: 2 }}>
+                          {task.description}
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                          {/* Estado */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                              Estado:
+                            </Typography>
+                            {(user?.can_edit_projects || task.assigned_to === user?.id) ? (
+                              <FormControl size="small" sx={{ minWidth: 100 }}>
+                                <Select
+                                  value={task.status}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    handleStatusChange(task, e.target.value);
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  sx={{ 
+                                    '& .MuiSelect-select': { 
+                                      py: 0.5,
+                                      fontSize: '0.75rem',
+                                      color: getStatusColor(task.status) === 'success' ? 'success.main' :
+                                             getStatusColor(task.status) === 'warning' ? 'warning.main' :
+                                             getStatusColor(task.status) === 'info' ? 'info.main' :
+                                             getStatusColor(task.status) === 'error' ? 'error.main' : 'text.primary'
+                                    }
+                                  }}
+                                >
+                                  <MenuItem value="pending">Pendiente</MenuItem>
+                                  <MenuItem value="in_progress">En Progreso</MenuItem>
+                                  <MenuItem value="completed">Completado</MenuItem>
+                                  <MenuItem value="cancelled">Cancelado</MenuItem>
+                                </Select>
+                              </FormControl>
+                            ) : (
+                              /* Mostrar solo el estado como texto si no puede editar */
+                              <Chip
+                                label={task.status_display}
+                                size="small"
+                                color={getStatusColor(task.status) as any}
+                                variant="outlined"
+                              />
+                            )}
+                          </Box>
+                          
+                          {/* Prioridad */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                              Prioridad:
+                            </Typography>
+                            <Chip
+                              label={task.priority_display}
+                              size="small"
+                              color={getPriorityColor(task.priority) as any}
+                              variant="outlined"
+                            />
+                          </Box>
+                        </Box>
+                        <Typography variant="caption" color="text.secondary">
+                          Proyecto: {task.project_name} • 
+                          {task.due_date && ` Vence: ${new Date(task.due_date).toLocaleDateString()}`}
+                          {task.assigned_to_name && ` • Asignado a: ${task.assigned_to_name}`}
+                        </Typography>
+                      </Box>
+                    }
+                  />
                   {(user?.can_edit_projects || task.assigned_to === user?.id) && (
                     <Box sx={{ display: 'flex', gap: 1 }}>
                       <IconButton
@@ -646,26 +706,24 @@ const Tasks: React.FC = () => {
                     ))}
                   </Select>
                 </FormControl>
-                {user?.role === 'admin' && (
-                  <FormControl fullWidth required>
-                    <InputLabel>Asignado a</InputLabel>
-                    <Select
-                      value={formData.assigned_to}
-                      label="Asignado a"
-                      onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
-                      required
-                    >
-                      <MenuItem value="" disabled>
-                        <em>Seleccione un usuario</em>
+                <FormControl fullWidth required>
+                  <InputLabel>Asignado a</InputLabel>
+                  <Select
+                    value={formData.assigned_to}
+                    label="Asignado a"
+                    onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
+                    required
+                  >
+                    <MenuItem value="" disabled>
+                      <em>Seleccione un usuario</em>
+                    </MenuItem>
+                    {getAvailableUsers().map((user) => (
+                      <MenuItem key={user.id} value={user.id.toString()}>
+                        {user.full_name}
                       </MenuItem>
-                      {getAvailableUsers().map((user) => (
-                        <MenuItem key={user.id} value={user.id.toString()}>
-                          {user.full_name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
+                    ))}
+                  </Select>
+                </FormControl>
               </Box>
               <TextField
                 fullWidth
@@ -842,7 +900,7 @@ const Tasks: React.FC = () => {
                 ) : (
                   <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
                     {taskComments.map((comment) => (
-                      <Box key={comment.id} sx={{ mb: 1, pb: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+                      <Box key={comment.id} sx={{ mb: 0, pb: 0, borderBottom: '1px solid', borderColor: 'divider' }}>
                         {editingComment?.id === comment.id ? (
                           // Modo edición
                           <Box>
@@ -922,6 +980,25 @@ const Tasks: React.FC = () => {
           )}
         </DialogActions>
       </Dialog>
+
+      {/* Confirmación de eliminación de tarea */}
+      <ConfirmDialog
+        open={openDeleteDialog}
+        title="Eliminar tarea"
+        description={
+          taskToDelete
+            ? `¿Estás seguro de eliminar la tarea "${taskToDelete.title}"? Esta acción no se puede deshacer.`
+            : '¿Estás seguro de eliminar esta tarea? Esta acción no se puede deshacer.'
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        confirmColor="error"
+        onClose={() => {
+          setOpenDeleteDialog(false);
+          setTaskToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+      />
     </Box>
   );
 };

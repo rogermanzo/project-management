@@ -13,6 +13,8 @@ import {
   Chip,
   Collapse,
 } from '@mui/material';
+import { IconButton, Tooltip, Button } from '@mui/material';
+import { Brightness4, Brightness7 } from '@mui/icons-material';
 import {
   Home,
   Task,
@@ -24,10 +26,13 @@ import {
   ExpandMore,
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
+import ConfirmDialog from '../Common/ConfirmDialog';
+import NotificationBell from '../Notifications/NotificationBell';
+
 import { useNavigate, useLocation } from 'react-router-dom';
 import { projectService } from '../../services/api';
 import { Project } from '../../types';
-import NotificationBell from '../Notifications/NotificationBell';
 
 const drawerWidth = 280;
 
@@ -37,12 +42,14 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ open, onToggle }) => {
+  const { mode, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsExpanded, setProjectsExpanded] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -116,36 +123,19 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onToggle }) => {
           borderColor: 'divider',
         }}
       >
-        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+        <Typography sx={{ fontWeight: 'bold' }}>
           Gestión Proyectos
         </Typography>
-        <NotificationBell />
-      </Box>
-
-      {/* User Info */}
-      <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-          <Avatar
-            src={user?.avatar}
-            alt={user?.full_name}
-            sx={{ width: 40, height: 40 }}
-          >
-            {user?.first_name?.[0]}
-          </Avatar>
-          <Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-              {user?.full_name}
-            </Typography>
-            <Chip
-              label={user?.role_display}
-              color={getRoleColor(user?.role || '') as any}
-              size="small"
-              variant="outlined"
-            />
-          </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <NotificationBell />
+          <IconButton aria-label="Cambiar tema" onClick={toggleTheme} color="inherit">
+            {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
+          </IconButton>
         </Box>
       </Box>
 
+      {/* User Info */}
+      
       {/* Navigation */}
       <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
         {/* General Section */}
@@ -294,37 +284,51 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onToggle }) => {
 
       </Box>
 
-      {/* Footer Actions */}
-      <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-        <List dense>
-          <ListItem disablePadding>
-            <ListItemButton
-              onClick={() => navigate('/profile')}
-              sx={{ borderRadius: 1, mb: 0.5 }}
+      {/* Footer */}
+      <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider', backgroundColor: 'background.paper' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Avatar
+              src={user?.avatar}
+              alt={user?.full_name}
+              sx={{ width: 40, height: 40 }}
             >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <Settings />
-              </ListItemIcon>
-              <ListItemText
-                primary="Configuración"
-                primaryTypographyProps={{ fontSize: '0.875rem' }}
+              {user?.first_name?.[0]}
+            </Avatar>
+            <Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', lineHeight: 1.2 }}>
+                {user?.full_name}
+              </Typography>
+              <Chip
+                label={user?.role_display}
+                color={getRoleColor(user?.role || '') as any}
+                size="small"
+                variant="outlined"
+                sx={{ mt: 0.5 }}
               />
-            </ListItemButton>
-          </ListItem>
-          <ListItem disablePadding>
-            <ListItemButton onClick={handleLogout} sx={{ borderRadius: 1 }}>
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <Logout />
-              </ListItemIcon>
-              <ListItemText
-                primary="Cerrar Sesión"
-                primaryTypographyProps={{ fontSize: '0.875rem' }}
-              />
-            </ListItemButton>
-          </ListItem>
-        </List>
+            </Box>
+          </Box>
+
+          <Tooltip title="Cerrar sesión">
+            <IconButton onClick={() => setConfirmLogoutOpen(true)} color="inherit" size="small">
+              <Logout />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        {/* Botón de Configuración destacado */}
+        <Button
+          fullWidth
+          variant="outlined"
+          startIcon={<Settings />}
+          onClick={() => navigate('/profile')}
+          sx={{ mt: 2, textTransform: 'none' }}
+        >
+          Configuración
+        </Button>
       </Box>
     </Box>
+    
   );
 
   return (
@@ -342,6 +346,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onToggle }) => {
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
             width: drawerWidth,
+            backgroundColor: 'background.paper',
           },
         }}
       >
@@ -361,12 +366,28 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onToggle }) => {
             position: 'fixed',
             height: '100vh',
             zIndex: 1,
+            backgroundColor: 'background.paper',
           },
         }}
         open
       >
         {drawerContent}
       </Drawer>
+
+      {/* Confirmación de cierre de sesión */}
+      <ConfirmDialog
+        open={confirmLogoutOpen}
+        title="Cerrar sesión"
+        description="¿Seguro que quieres cerrar sesión? Tendrás que volver a iniciar sesión para continuar."
+        confirmText="Cerrar sesión"
+        cancelText="Cancelar"
+        confirmColor="error"
+        onClose={() => setConfirmLogoutOpen(false)}
+        onConfirm={async () => {
+          await handleLogout();
+          setConfirmLogoutOpen(false);
+        }}
+      />
     </>
   );
 };
