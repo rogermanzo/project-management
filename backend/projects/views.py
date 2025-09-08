@@ -119,12 +119,28 @@ class TaskListView(generics.ListCreateAPIView):
     
     def perform_create(self, serializer):
         project_id = self.kwargs.get('project_id')
-        if project_id:
-            try:
-                project = Project.objects.get(id=project_id)
-                if not project.can_user_edit(self.request.user):
-                    raise PermissionError('No tienes permisos para crear tareas en este proyecto.')
-                task = serializer.save(project=project)
+        try:
+            if project_id:
+                try:
+                    project = Project.objects.get(id=project_id)
+                    if not project.can_user_edit(self.request.user):
+                        raise PermissionError('No tienes permisos para crear tareas en este proyecto.')
+                    task = serializer.save(project=project)
+                    
+                    # Enviar notificación al usuario asignado
+                    from .notification_views import send_notification
+                    send_notification(
+                        user=task.assigned_to,
+                        notification_type='task_assigned',
+                        title='Nueva tarea asignada',
+                        message=f'Se te ha asignado la tarea "{task.title}" en el proyecto "{project.name}"',
+                        project=project,
+                        task=task
+                    )
+                except Project.DoesNotExist:
+                    raise ValueError('Proyecto no encontrado.')
+            else:
+                task = serializer.save()
                 
                 # Enviar notificación al usuario asignado
                 from .notification_views import send_notification
@@ -132,25 +148,13 @@ class TaskListView(generics.ListCreateAPIView):
                     user=task.assigned_to,
                     notification_type='task_assigned',
                     title='Nueva tarea asignada',
-                    message=f'Se te ha asignado la tarea "{task.title}" en el proyecto "{project.name}"',
-                    project=project,
+                    message=f'Se te ha asignado la tarea "{task.title}"',
+                    project=task.project,
                     task=task
                 )
-            except Project.DoesNotExist:
-                raise ValueError('Proyecto no encontrado.')
-        else:
-            task = serializer.save()
-            
-            # Enviar notificación al usuario asignado
-            from .notification_views import send_notification
-            send_notification(
-                user=task.assigned_to,
-                notification_type='task_assigned',
-                title='Nueva tarea asignada',
-                message=f'Se te ha asignado la tarea "{task.title}"',
-                project=task.project,
-                task=task
-            )
+        except Exception as e:
+            print(f"❌ Error creating task: {str(e)}")
+            raise
 
 
 class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):

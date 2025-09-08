@@ -255,6 +255,21 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     fetchUnreadCount();
   }, []);
 
+  // Listener para actualizar notificaciones cuando se crea una tarea
+  useEffect(() => {
+    const handleNotificationRefresh = () => {
+      console.log('🔄 Refreshing notifications due to task creation/update');
+      fetchNotifications();
+      fetchUnreadCount();
+    };
+
+    window.addEventListener('notifications:refresh', handleNotificationRefresh);
+    
+    return () => {
+      window.removeEventListener('notifications:refresh', handleNotificationRefresh);
+    };
+  }, []);
+
   const value: NotificationContextType = {
     notifications,
     unreadCount,

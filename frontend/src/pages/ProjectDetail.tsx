@@ -246,10 +246,24 @@ const ProjectDetail: React.FC = () => {
         console.warn('No se pudo agregar miembro (posiblemente ya es miembro):', e);
       }
       await fetchProjectData();
+      // Actualizar notificaciones después de crear/editar tarea
+      try {
+        window.dispatchEvent(new CustomEvent('notifications:refresh'));
+      } catch (e) {
+        console.warn('No se pudo disparar evento de actualización de notificaciones:', e);
+      }
       handleCloseTaskDialog();
     } catch (error: any) {
-      setError('Error al guardar la tarea');
       console.error('Error:', error);
+      if (error.response?.data?.error) {
+        setError(error.response.data.error);
+      } else if (error.response?.data?.detail) {
+        setError(error.response.data.detail);
+      } else if (error.message) {
+        setError(error.message);
+      } else {
+        setError('Error al guardar la tarea');
+      }
     }
   };
 
